@@ -1,0 +1,88 @@
+<!-- template.html -->
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width" />
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<title>Usual - Verification</title>
+
+		<style>
+			img {
+				object-fit: contain;
+			}
+
+			.header {
+				text-align: start;
+				font-size: 25px;
+				font-weight: bold;
+			}
+
+			.content {
+				font-size: 16px;
+				margin: 0px;
+				padding: 0px 100px;
+			}
+
+			.course-title {
+				font-size: 20px;
+				text-align: start;
+				margin: 0px;
+			}
+
+			.deposit-code {
+				font-size: 25px;
+				font-weight: bold;
+				text-align: center;
+				color: white;
+				width: 300px;
+			}
+
+			.deposit-code-text {
+				width: 200px;
+				background-color: #111;
+				padding: 20px 20px;
+				margin: 0px;
+			}
+		</style>
+	</head>
+
+	<body>
+		<table
+			style="background-color: #ffffff"
+			width="100%"
+			border="0"
+			cellspacing="0"
+			cellpadding="0"
+		>
+			<tr>
+				<td align="center" style="padding: 20px 0px">
+					<img src="cid:image1" width="100px" />
+				</td>
+			</tr>
+
+			<tr class="header">
+				<td align="center" style="padding: 10px 0px">Verify Your Email</td>
+			</tr>
+
+			<tr class="content">
+				<td align="center">
+					<p style="margin: 0 0px 30px 0px">
+						Hi {{.Name}}, your email verification code is:
+					</p>
+				</td>
+			</tr>
+
+			<tr class="deposit-code">
+				<td align="center">
+					<p class="deposit-code-text">{{.OTP}}</p>
+				</td>
+			</tr>
+
+			<tr class="content">
+				<td align="center">
+					<p style="margin: 30px 0px">Please do not share this with anyone.</p>
+				</td>
+			</tr>
+		</table>
+	</body>
+</html>
