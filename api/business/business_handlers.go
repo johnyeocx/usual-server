@@ -78,11 +78,19 @@ func getBusinessHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
+		subscribers, err := getBusinessStats(sqlDB, *businessId)
+		if err != nil && err != sql.ErrNoRows {
+			log.Println("Failed to get biz subscribers", err)
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+
 		resBody := map[string]interface{} {
 			"business": business,
 			"individual": individual,
 			"product_categories": categories,
 			"subscription_products": subProducts,
+			"subscribers": subscribers,
 		}
 
 		c.JSON(200, resBody)

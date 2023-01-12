@@ -3,7 +3,7 @@ package sub_product
 import (
 	"database/sql"
 	"errors"
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -13,16 +13,12 @@ import (
 
 
 func Routes(subProductRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
-	subProductRouter.GET("/product_stats/:productId", getSubProductStats(sqlDB))
+	subProductRouter.POST("/product_stats", getSubProductStats(sqlDB))
 	subProductRouter.POST("/products_stats", getSubProductsStats(sqlDB))
 }
 
 func getSubProductStats(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
-		productId, ok := c.Params.Get("productId")
-		if !ok {
-			c.JSON(http.StatusBadRequest, errors.New("missing product id param"))
-		}
 
 		businessId, err := middleware.AuthenticateId(c, sqlDB)
 		if err != nil {
@@ -30,12 +26,27 @@ func getSubProductStats(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
+		var reqBody struct {
+			ProductID 	int	`json:"product_id"`
+		}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Println("Failed to provide req body")
+			c.JSON(http.StatusBadRequest, err)
+			return
+		}
+
 
 		// 1. get list of subscriptions for product
+		data, reqErr := GetSubProductStats(sqlDB, *businessId, reqBody.ProductID)
+		if err != nil {
+			log.Println("Failed to get sub product stats:", err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
 
-
-		fmt.Println(productId, businessId)
-		c.JSON(200, nil);
+		
+		c.JSON(200, data);
 	}
 }
 

@@ -11,14 +11,14 @@ import (
 )
 
 func login(sqlDB *sql.DB, email string, password string) (
-	*models.Business, *models.Person, *models.RequestError,
+	*models.Business, *models.RequestError,
 ) {
 
 	// 1. Authenticate
 	authDB := db.AuthDB{DB: sqlDB}
 	hashedPassword, err := authDB.GetHashedPassword(email)
 	if err != nil {
-		return nil,nil, &models.RequestError{
+		return nil, &models.RequestError{
 			Err: fmt.Errorf("failed to get hashed password from email\n%v", err),
 			StatusCode: http.StatusBadRequest,
 		}
@@ -28,7 +28,7 @@ func login(sqlDB *sql.DB, email string, password string) (
 	matches := secure.StringMatchesHash(password, *hashedPassword)
 	
 	if !matches {
-		return nil,nil,  &models.RequestError{
+		return nil, &models.RequestError{
 			Err: fmt.Errorf("password invalid\n%v", err),
 			StatusCode: http.StatusUnauthorized,
 		}
@@ -38,23 +38,11 @@ func login(sqlDB *sql.DB, email string, password string) (
 	businessDB := db.BusinessDB{DB: sqlDB}
 	business, err := businessDB.GetBusinessByEmail(email)
 	if err != nil {
-		return nil, nil, &models.RequestError{
+		return nil, &models.RequestError{
 			Err: fmt.Errorf("failed to get business from email\n%v", err),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
-	// 4. Get individual
-	if business.IndividualID == nil {
-		return business, nil, nil
-	}
-	individual, err := businessDB.GetIndividualByID(*business.IndividualID)
-	if err != nil {
-		return nil, nil, &models.RequestError{
-			Err: fmt.Errorf("failed to get individual from individual id\n%v", err),
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	return business, individual, nil
+	return business, nil
 }

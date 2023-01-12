@@ -73,5 +73,3 @@ func refreshToken(sqlDB *sql.DB, refreshToken string) (*int, error) {
 
 	return &businessIdInt, nil
 }
-
-// VALIDATION

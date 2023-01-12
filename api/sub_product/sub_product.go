@@ -2,8 +2,10 @@ package sub_product
 
 import (
 	"database/sql"
+	"net/http"
 
 	"github.com/johnyeocx/usual/server/db"
+	"github.com/johnyeocx/usual/server/db/models"
 )
 
 
@@ -11,19 +13,39 @@ func GetSubProductStats(
 	sqlDB *sql.DB, 
 	businessId int, 
 	productId int,
-) (error) {
+) (map[string]interface{}, *models.RequestError) {
 	b := db.BusinessDB{DB: sqlDB}
 
 	// 1. check that business owns product
 	err := b.BusinessOwnsProduct(businessId, productId)
 	if err != nil {
-		return err
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusUnauthorized,
+		}
 	}
 
-	// 2. retrieve list of subscriptions for product
-	b.GetSubProductSubscriptions(productId)
+	// 2. retrieve list of subscribers for product
+	subscribers, err := b.GetSubProductSubscribers(productId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
 
-	// 3. for list of subscriptions, retrieve stripe invoice data
+	// 3. retrieve list of invoice data for product
+	invoices, err := b.GetSubProductInvoices(productId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
 
-	return nil
+
+	return map[string]interface{}{
+		"subscribers": subscribers,
+		"invoices": invoices,
+	}, nil
 }

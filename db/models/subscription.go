@@ -6,7 +6,6 @@ type ProductCategory struct {
 	BusinessID	*string `json:"business_id"`
 }
 
-
 type SubscriptionProduct struct {
 	Product 	Product 			`json:"product"`
 	SubPlan		SubscriptionPlan 	`json:"subscription_plan"`	
@@ -37,3 +36,4 @@ type TimeFrame struct {
 	Interval		JsonNullString		`json:"interval"`
 	IntervalCount	JsonNullInt16		`json:"interval_count"`
 }
+

@@ -158,11 +158,89 @@ func (s *BusinessDB) GetSubProductsFromIds(
 	return &subProducts, nil
 }
 
-func (s *BusinessDB) GetSubProductSubscriptions(
-	productId int,
-) () {
 
+// Sub Product Stats
+
+func (s *BusinessDB) GetSubProductInvoices(
+	productId int,
+) (*[]models.InvoiceData, error) {
+	// stmt := `SELECT * from product p JOIN subscription_plan sp JOIN subscription s
+	// 	ON p.product_id=sp.product_id AND sp.plan_id=s.plan_id`
+	
+	stmt := `SELECT 
+	c.customer_id, c.stripe_id, c.name, i.invoice_id, i.total, i.invoice_url, i.status, i.attempted, i.app_fee_amt from 
+	product as p JOIN invoice as i ON p.stripe_product_id=i.stripe_prod_id
+	JOIN customer as c on i.stripe_cus_id=c.stripe_id
+	WHERE p.product_id=$1;`
+
+	rows, err := s.DB.Query(stmt, productId)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	invoices := []models.InvoiceData{}
+	for rows.Next() {
+		var invoice models.InvoiceData
+		
+        if err := rows.Scan(
+			&invoice.CustomerID,
+			&invoice.CustomerStripeID,
+			&invoice.CustomerName,
+			&invoice.InvoiceID,
+			&invoice.Total,
+			&invoice.InvoiceURL,
+			&invoice.Status,
+			&invoice.Attempted,
+			&invoice.ApplicationFeeAmt,
+		); err != nil {
+			fmt.Println(err)
+			continue
+        }
+		
+		invoices = append(invoices, invoice)
+    }
+
+	return &invoices, nil
 }
+
+func (s *BusinessDB) GetSubProductSubscribers(
+	productId int,
+) (*[]models.Customer, error) {
+	stmt := `SELECT c.customer_id, c.name  from product as 
+	p JOIN subscription_plan as sp ON p.product_id=sp.product_id
+	JOIN subscription as s ON s.plan_id=sp.plan_id 
+	JOIN customer as c ON s.customer_id=c.customer_id
+	WHERE p.product_id=$1;`
+
+	
+	rows, err := s.DB.Query(stmt, productId)
+	if err != nil {
+		return nil, err
+	}
+	
+
+	defer rows.Close()
+
+	subscribers := []models.Customer{}
+	for rows.Next() {
+		var subscriber models.Customer
+        if err := rows.Scan(
+			&subscriber.ID,
+			&subscriber.Name,
+		); err != nil {
+			continue
+        }
+		
+		subscribers = append(subscribers, subscriber)
+    }
+
+	
+	return &subscribers, nil
+}
+
+// INSERTS
 
 func (s *BusinessDB) InsertProductCategory(
 	businessId int, 

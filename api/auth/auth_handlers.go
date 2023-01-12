@@ -8,7 +8,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
-	"github.com/johnyeocx/usual/server/api/business"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/cloud"
 	"github.com/johnyeocx/usual/server/utils/middleware"
@@ -171,20 +170,13 @@ func loginHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		businessObj, individual, reqErr := login(sqlDB, reqBody.Email, reqBody.Password)
+		businessObj, reqErr := login(sqlDB, reqBody.Email, reqBody.Password)
 		if reqErr != nil {
 			log.Println(reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)
 			return 
 		}
-
-		categories, subProducts, err := business.GetBusinessProducts(sqlDB, businessObj.BusinessID)
-		if err != nil && err != sql.ErrNoRows{
-			log.Println(err)
-			c.JSON(http.StatusBadGateway, err)
-			return
-		}
-
+		
 		accessToken, refreshToken, err := generateTokens(businessObj.BusinessID)
 		if err != nil {
 			log.Println(err)
@@ -195,10 +187,6 @@ func loginHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		resBody := map[string]interface{} {
 			"access_token": *accessToken,
 			"refresh_token": *refreshToken,
-			"business": businessObj,
-			"individual": individual,
-			"product_categories": categories,
-			"subscription_products": subProducts,
 		}
 
 		c.JSON(200, resBody)

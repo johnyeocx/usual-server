@@ -3,8 +3,7 @@ package stripe_webhook
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 
@@ -24,7 +23,7 @@ func stripeWebhookHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		const MaxBodyBytes = int64(65536)
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxBodyBytes)
 
-		payload, err := ioutil.ReadAll(c.Request.Body)
+		payload, err := io.ReadAll(c.Request.Body)
 		if err != nil {
 			log.Println(err)
 			return
@@ -34,9 +33,30 @@ func stripeWebhookHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		if err := json.Unmarshal(payload, &event); err != nil {
 			log.Println(err)
 			return
-		}
-		fmt.Println(event)
+		}	
 
-		// handle invoice.paid event
+		if event.Type == "invoice.paid" {
+			err := InsertInvoice(sqlDB, event.Data.Object)
+			if err != nil {
+				log.Println("Failed to insert invoice paid:", err)
+				c.JSON(http.StatusBadGateway, err)
+				return
+			} else {
+				c.JSON(200, nil)
+				return
+			}
+		}
+
+		if event.Type == "invoice.payment_failed" {
+			err := InsertInvoice(sqlDB, event.Data.Object)
+			if err != nil {
+				log.Println("Failed to insert invoice paid:", err)
+				c.JSON(http.StatusBadGateway, err)
+				return
+			} else {
+				c.JSON(200, nil)
+				return
+			}
+		}
 	}
 }

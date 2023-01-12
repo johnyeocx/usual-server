@@ -32,6 +32,7 @@ func createCFromSubscribeHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		
 		cId, reqErr := CreateCFromSubscribe(sqlDB, reqBody.Name, reqBody.Email, reqBody.Card)
 		if reqErr != nil {
+			// log.Println("Failed to create customer from subscribe:", reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)
 			return
 		}
