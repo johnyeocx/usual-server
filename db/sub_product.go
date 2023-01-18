@@ -20,7 +20,7 @@ func (s *BusinessDB) GetBusinessSubProducts(
 	usage_unlimited, usage_interval, usage_interval_count, usage_amount
 
 	from product JOIN subscription_plan on product.product_id = subscription_plan.product_id
-	WHERE business_id=$1 ORDER BY product.category_id ASC`
+	WHERE business_id=$1 ORDER BY product.category_id, product.product_id ASC`
 
 	// usage_amount
 	rows, err := s.DB.Query(selectStatement, businessId)
@@ -87,7 +87,7 @@ func (s *BusinessDB) GetBusinessProductCategories(
 ) (*[]models.ProductCategory, error){
 	selectStatement := `SELECT 
 	category_id, business_id, title 
-	from product_category WHERE business_id=$1`
+	from product_category WHERE business_id=$1 ORDER BY category_id ASC`
 
 	rows, err := s.DB.Query(selectStatement, businessId)
 
@@ -207,6 +207,19 @@ func (s *BusinessDB) GetSubProductDeleteData(
 	data["stripe_sub_ids"] = subIds
 
 	return &data, nil
+}
+
+func (s *BusinessDB) GetProductCatId(
+	productId int,
+) (*int, error) {
+	var catId int;
+	if err := s.DB.QueryRow(`SELECT category_id FROM product WHERE product_id=$1`, productId).Scan(
+		&catId,
+	); err != nil {
+		return nil, err
+	}
+
+	return &catId, nil
 }
 
 
@@ -461,17 +474,17 @@ func (s *BusinessDB) BusinessOwnsProductAndPlan(
 func (s *BusinessDB) BusinessOwnsProduct(
 	businessId int,
 	productId int,
-) (error) {
+) (models.Product, error) {
 
 	// CHECK THAT PRODUCT & PLAN BELONGS TO BUSINESS ID
-	var businessMatch bool
+	var product models.Product
 	err := s.DB.QueryRow(`
-		SELECT business_id=$1 
-		from product WHERE product_id=$2`, 
+		SELECT stripe_product_id 
+		from product WHERE business_id=$1 AND product_id=$2`, 
 		businessId, productId,
-	).Scan(&businessMatch)
+	).Scan(&product.StripeProductID)
 
-	return err
+	return product, err
 }
 
 
@@ -535,7 +548,8 @@ func (s *BusinessDB) SetProductCategory(
 	// CREATE NEW CATEGORY IF ID IS NULL
 	var finalCatId int;
 	if (categoryId == nil) {
-		err := s.DB.QueryRow(`INSERT into product_category (business_id, title) VALUES ($1, $2) RETURNING category_id`, 
+		err := s.DB.QueryRow(`INSERT into product_category 
+		(business_id, title) VALUES ($1, $2) RETURNING category_id`, 
 			businessId, title,
 		).Scan(&finalCatId)
 

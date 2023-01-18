@@ -21,7 +21,7 @@ func GetSubProductStats(
 	b := db.BusinessDB{DB: sqlDB}
 
 	// 1. check that business owns product
-	err := b.BusinessOwnsProduct(businessId, productId)
+	_, err := b.BusinessOwnsProduct(businessId, productId)
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
@@ -47,11 +47,82 @@ func GetSubProductStats(
 		}
 	}
 
-
 	return map[string]interface{}{
 		"subscribers": subscribers,
 		"invoices": invoices,
 	}, nil
+}
+
+
+func UpdateProductName(
+	sqlDB *sql.DB,
+	businessId int,
+	productId int,
+	newName string,
+) (*models.RequestError) {
+	b := db.BusinessDB{DB: sqlDB}
+
+	// 1. Business owns product
+	product, err := b.BusinessOwnsProduct(businessId, productId)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+
+	err = my_stripe.UpdateProductName(*product.StripeProductID, newName)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	err = b.SetProductName(businessId, productId, newName)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	return nil
+}
+
+func UpdateProductCategory(
+	sqlDB *sql.DB,
+	businessId int,
+	productId int,
+	title string,
+	catId *int,
+) (*int, *models.RequestError) {
+	b := db.BusinessDB{DB: sqlDB}
+
+	// Get previous product category
+	prevCatId, err := b.GetProductCatId(productId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	catId, err = b.SetProductCategory(businessId, productId, catId, title)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	b.DeleteCategoryIfEmpty(*prevCatId)
+
+	if catId != nil {
+		return catId, nil
+	} else {
+		return nil, nil
+	}
 }
 
 func DeleteSubProduct(
@@ -63,7 +134,7 @@ func DeleteSubProduct(
 	b := db.BusinessDB{DB: sqlDB}
 
 	// 1. Check that business owns product
-	err := b.BusinessOwnsProduct(businessId, productId)
+	_, err := b.BusinessOwnsProduct(businessId, productId)
 	if err != nil {
 		return &models.RequestError{
 			Err: err,

@@ -76,37 +76,6 @@ func createSubProductHandler(sqlDB *sql.DB, s3Sess *session.Session)  gin.Handle
 	}
 }
 
-func setProductNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
-
-	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, err)
-		}
-
-		reqBody := struct {
-			Name	string `json:"name"`
-			ProductID int `json:"product_id"`
-		}{}
-
-		if err := c.BindJSON(&reqBody); err != nil {
-			log.Printf("Failed to decode req body for verify otp: %v\n", err)
-			c.JSON(400, err)
-			return
-		}
-
-		b := db.BusinessDB{DB: sqlDB}
-		err = b.SetProductName(*businessId, reqBody.ProductID, reqBody.Name)
-		if err != nil {
-			log.Printf("Failed to update product name: %v\n", err)
-			c.JSON(http.StatusBadGateway, err)
-			return
-		}
-
-		c.JSON(200, nil)
-	}
-}
-
 func setProductDescriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
@@ -138,44 +107,6 @@ func setProductDescriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
-func setProductCategoryHandler(sqlDB *sql.DB) gin.HandlerFunc {
-
-	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, err)
-		}
-
-		reqBody := struct {
-			ProductID int `json:"product_id"`
-			CategoryID *int `json:"category_id"`
-			Title string `json:"title"`
-		}{}
-
-		if err := c.BindJSON(&reqBody); err != nil {
-			log.Printf("Failed to decode req body for verify otp: %v\n", err)
-			c.JSON(400, err)
-			return
-		}
-
-
-		b := db.BusinessDB{DB: sqlDB}
-		catId, err := b.SetProductCategory(*businessId, reqBody.ProductID, reqBody.CategoryID, reqBody.Title)
-		if err != nil {
-			log.Printf("Failed to update product category: %v\n", err)
-			c.JSON(http.StatusBadGateway, err)
-			return
-		}
-
-		if catId != nil {
-			c.JSON(200, map[string]int {
-				"new_category_id": *catId,
-			})
-		} else {
-			c.JSON(200, nil)
-		}
-	}
-}
 
 func setSubProductPricingHandler(sqlDB *sql.DB) gin.HandlerFunc {
 

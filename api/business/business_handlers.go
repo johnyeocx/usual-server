@@ -32,8 +32,6 @@ func Routes(businessRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 	businessRouter.PATCH("individual/address", updateIndividualAddressHandler(sqlDB))
 	businessRouter.PATCH("individual/mobile", updateIndividualMobileHandler(sqlDB))
 
-	businessRouter.PATCH("subscription_product/name", setProductNameHandler(sqlDB))
-	businessRouter.PATCH("subscription_product/category", setProductCategoryHandler(sqlDB))
 	businessRouter.PATCH("subscription_product/description", setProductDescriptionHandler(sqlDB))
 	businessRouter.PATCH("subscription_product/subscription_pricing", setSubProductPricingHandler(sqlDB))
 	businessRouter.PATCH("subscription_product/subscription_usage", setSubProductUsageHandler(sqlDB))
