@@ -1,6 +1,9 @@
 package cloud
 
 import (
+	"bytes"
+	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -58,7 +61,42 @@ func GetImageUploadUrl(sess *session.Session, key string) (string, error) {
 		return "can't sign", err
 	}
 
-	// _ := "https://bool-m1.s3.ap-southeast-1.amazonaws.com/events/" + eventId + "/" + photoId
-
 	return str, nil
+}
+
+func UploadImage(
+	sess *session.Session, 
+	image []byte, 
+	contentType string,
+	key string,
+) (error) {
+	svc := s3.New(sess)
+	var bucket = os.Getenv("BUCKET_NAME")	
+
+	_, err := svc.PutObject(&s3.PutObjectInput{
+		Body: bytes.NewReader(image),
+		ContentType: &contentType,
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+
+	return err
+}
+
+func DeleteImage(sess *session.Session, key string) (error) {
+	svc := s3.New(sess)
+	var bucket = os.Getenv("BUCKET_NAME")
+
+	_, err := svc.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+
+	if err != nil {
+		log.Println(err)
+	} else {
+		fmt.Println("Successfully deleted image")
+	}
+	
+	return err
 }

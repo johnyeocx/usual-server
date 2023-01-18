@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
@@ -13,11 +14,12 @@ import (
 
 
 func Routes(subProductRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
-	subProductRouter.POST("/product_stats", getSubProductStats(sqlDB))
-	subProductRouter.POST("/products_stats", getSubProductsStats(sqlDB))
+	subProductRouter.POST("/product_stats", getSubProductStatsHandler(sqlDB))
+	subProductRouter.POST("/products_stats", getSubProductsStatsHandler(sqlDB))
+	subProductRouter.DELETE("/:productId", deleteSubProductHandler(sqlDB, s3Sess))
 }
 
-func getSubProductStats(sqlDB *sql.DB) gin.HandlerFunc {
+func getSubProductStatsHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 
 		businessId, err := middleware.AuthenticateId(c, sqlDB)
@@ -52,7 +54,32 @@ func getSubProductStats(sqlDB *sql.DB) gin.HandlerFunc {
 
 
 // get stats for multiple sub products
-func getSubProductsStats(sqlDB *sql.DB) gin.HandlerFunc {
+func getSubProductsStatsHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
+	}
+}
+
+// get stats for multiple sub products
+func deleteSubProductHandler(sqlDB *sql.DB, s3Sess *session.Session) gin.HandlerFunc {
+	return func (c *gin.Context) {
+		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+			return
+		}
+
+		productId := c.Param("productId")
+		productIdInt, err := strconv.Atoi(productId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, err)
+			return
+		}
+
+		reqErr := DeleteSubProduct(sqlDB, s3Sess, *businessId, productIdInt)
+		if reqErr != nil {
+			log.Println(reqErr.Err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
 	}
 }

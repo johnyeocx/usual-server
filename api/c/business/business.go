@@ -30,7 +30,7 @@ func GetBusinessByID(sqlDB *sql.DB, businessId int) (map[string]interface{}, err
 
 	return map[string] interface{} {
 		"business": business,
-		"sub_products": subProducts,
-		"product_categories": productCats,
+		"sub_products": *subProducts,
+		"product_categories": *productCats,
 	}, nil
 }

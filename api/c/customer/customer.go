@@ -42,7 +42,6 @@ func CreateCFromSubscribe(
 		fmt.Println(errMap["code"])
 
 		// handle card declined
-
 		return nil, &models.RequestError{
 			Err: err,
 			StatusCode: http.StatusBadGateway,

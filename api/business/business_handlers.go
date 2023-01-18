@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
-	"github.com/johnyeocx/usual/server/external/my_stripe"
+	"github.com/johnyeocx/usual/server/external/media"
 	"github.com/johnyeocx/usual/server/utils/middleware"
 )
 
@@ -17,7 +17,7 @@ import (
 func Routes(businessRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
 	businessRouter.GET("", getBusinessHandler(sqlDB))
 
-	businessRouter.POST("set_profile", setBusinessProfileHandler(sqlDB))
+	businessRouter.POST("set_profile", setBusinessProfileHandler(sqlDB, s3Sess))
 	businessRouter.POST("set_description", updateBusinessDescriptionHandler(sqlDB))
 	businessRouter.POST("add_subscription_product", createSubProductHandler(sqlDB, s3Sess))
 	
@@ -97,7 +97,7 @@ func getBusinessHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
-func setBusinessProfileHandler(sqlDB *sql.DB)  gin.HandlerFunc {
+func setBusinessProfileHandler(sqlDB *sql.DB, s3Sess *session.Session)  gin.HandlerFunc {
 	return func (c *gin.Context) {
 		businessId, err := middleware.AuthenticateId(c, sqlDB)
 		if err != nil {
@@ -118,53 +118,26 @@ func setBusinessProfileHandler(sqlDB *sql.DB)  gin.HandlerFunc {
 			return
 		}
 
-		// 1. get business by id
-		businessDB := db.BusinessDB{DB: sqlDB}
-		business, err := businessDB.GetBusinessByID(*businessId)
-		if err != nil {
-			log.Printf("Failed to get user by id: %v", err)
-			c.JSON(400, err)
-			return
-		}
-
-		// 2. set up stripe account
-		stripeId, err := my_stripe.CreateConnectedAccount(
-			business.Country,
-			business.Email,
-			reqBody.IPAddress,
-			reqBody.BusinessCategory,
-			reqBody.BusinessUrl,
-			&reqBody.Individual,
-		)
-		if err != nil {
-			log.Printf("Failed to create stripe connected account: %v", err)
-			c.JSON(400, err)
-			return
-		}
-
 		// 3. set up business profile
-		individualId, reqErr := setBusinessProfile(
+		reqErr := setBusinessProfile(
 			sqlDB,
 			*businessId,
 			reqBody.BusinessCategory, 
 			reqBody.BusinessUrl, 
 			&reqBody.Individual,
-			*stripeId,
+			reqBody.IPAddress,
 		) 
 
 		if reqErr != nil {
 			log.Printf("Failed to set business profile: %v", reqErr.Err)
-			c.JSON(400, err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
 			return
 		}
 		
-		c.JSON(200, struct {
-			IndividualID int `json:"individual_id"`
-			StripeID 	string 	`json:"stripe_id"`
-		}{
-			IndividualID: *individualId,
-			StripeID: *stripeId,
-		})
+		// 4. Create Business QR
+		media.GenerateSubscribeQRCode(s3Sess, *businessId)
+		
+		c.JSON(200, nil)
 	}
 }
 

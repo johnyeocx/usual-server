@@ -2,7 +2,6 @@ package business
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -72,8 +71,6 @@ func createSubProductHandler(sqlDB *sql.DB, s3Sess *session.Session)  gin.Handle
 				Title: reqBody.ProductCategory.Title,
 			}
 		}
-
-		fmt.Println(resBody)
 
 		c.JSON(200, resBody)
 	}

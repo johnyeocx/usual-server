@@ -25,6 +25,10 @@ func (s *BusinessDB) GetBusinessSubProducts(
 	// usage_amount
 	rows, err := s.DB.Query(selectStatement, businessId)
 
+	// if err == sql.ErrNoRows {
+	// 	empty := []models.SubscriptionProduct{}
+	// 	return &empty, nil
+	// }
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +78,6 @@ func (s *BusinessDB) GetBusinessSubProducts(
 			SubPlan: subPlan,
 		})
     }
-
-
 
 	return &subProducts, nil
 }
@@ -156,6 +158,55 @@ func (s *BusinessDB) GetSubProductsFromIds(
 	}
 
 	return &subProducts, nil
+}
+
+func (s *BusinessDB) GetSubProductDeleteData(
+	productId int,
+) (*map[string]interface{}, error) {
+	stmt1 := `SELECT p.stripe_product_id, p.category_id, sp.plan_id, sp.stripe_price_id FROM 
+	product as p JOIN subscription_plan as sp ON p.product_id=sp.product_id WHERE p.product_id=$1;`
+
+	
+	var stripeProductId string;
+	var catId int;
+	var stripePriceId string;
+	var planId string;
+	if err := s.DB.QueryRow(stmt1, productId).Scan(
+		&stripeProductId,
+		&catId,
+		&planId,
+		&stripePriceId,
+	); err != nil {
+		return nil, err
+	}
+
+	data := map[string]interface{}{
+		"stripe_product_id": stripeProductId,
+		"category_id": catId,
+		"stripe_price_id": stripePriceId,
+		"plan_id": planId,
+	}
+	
+	stmt2 := `SELECT stripe_sub_id FROM subscription WHERE plan_id=$1`
+	rows, err := s.DB.Query(stmt2, planId)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	subIds := []string{}
+	for rows.Next() {
+		var subId string
+        if err := rows.Scan(
+			&subId,
+		); err != nil {
+			continue
+        }
+		subIds = append(subIds, subId)
+    }
+
+	data["stripe_sub_ids"] = subIds
+
+	return &data, nil
 }
 
 
@@ -240,8 +291,9 @@ func (s *BusinessDB) GetSubProductSubscribers(
 	return &subscribers, nil
 }
 
-// INSERTS
 
+
+// INSERTS
 func (s *BusinessDB) InsertProductCategory(
 	businessId int, 
 	title string,
@@ -534,7 +586,6 @@ func (s *BusinessDB) SetSubProductPricing(
 	if !businessMatch {
 		return errors.New("product id does not belong to business id")
 	}
-	fmt.Println("Stripe price id:", stripePriceId)
 
 	_, err = s.DB.Exec(`UPDATE subscription_plan SET 
 		recurring_interval=$1, recurring_interval_count=$2, unit_amount=$3, stripe_price_id=$4
@@ -603,3 +654,41 @@ func (s *BusinessDB) SetSubProductUsage(
 	return nil
 }
 
+func (s *BusinessDB) DeleteSubscription(
+	stripeSubId string,
+) (error) {
+
+	stmt1 := `DELETE from subscription WHERE stripe_sub_id=$1`
+	_, err := s.DB.Exec(stmt1, stripeSubId)
+	return err
+}
+
+func (s *BusinessDB) DeleteProductAndPlan(
+	productId int,
+) (error) {
+
+	_, err := s.DB.Exec(`DELETE from subscription_plan WHERE product_id=$1`, productId)
+	if err != nil {
+		return err
+	}
+	
+	_, err = s.DB.Exec(`DELETE from product WHERE product_id=$1`, productId)
+	return err
+}
+
+func (s *BusinessDB) DeleteCategoryIfEmpty(
+	categoryId int,
+)(error) {
+
+	var pId int
+	err := s.DB.QueryRow(`
+		SELECT product_id from product WHERE category_id=$1`, 
+		categoryId).Scan(&pId)
+
+	if err == sql.ErrNoRows {
+		_, err = s.DB.Exec(`DELETE from product_category WHERE category_id=$1`, categoryId)
+		return err
+	}
+
+	return nil
+}

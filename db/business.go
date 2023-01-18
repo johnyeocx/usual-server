@@ -39,7 +39,7 @@ func (businessDB *BusinessDB) GetBusinessByEmail(email string) (*models.Business
 	selectStatement := `SELECT 
 	business_id, name, email, country, 
 	business_category, business_url, individual_id, stripe_id, description
-	from business WHERE email=$1`
+	from business WHERE email=$1 AND email_verified=true`
 
 	var business models.Business
 	if err := businessDB.DB.QueryRow(selectStatement, email).Scan(

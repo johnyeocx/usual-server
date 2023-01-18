@@ -2,7 +2,6 @@ package business
 
 import (
 	"database/sql"
-	"fmt"
 
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
@@ -36,7 +35,6 @@ func createSubProduct (
 	}
 
 	stripeProductId, stripePriceId, err := my_stripe.CreateNewSubProduct(product.Name, *subPlan)
-	fmt.Println(stripeProductId, stripePriceId)
 	if err != nil {
 		return nil, nil, err
 	}

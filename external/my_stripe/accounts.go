@@ -21,12 +21,10 @@ func CreateConnectedAccount(
 	country string, 
 	email string, 
 	ipAddress string,
-	businessCategory string,
+	mcc string,
 	businessUrl string,
 	user *models.Person,
 ) (*string, error) {
-	// hardcode business category
-	businessCategory = "5734"
 
 	stripe.Key = stripeSecretKey()
 	unixNow := time.Now().Unix()
@@ -48,7 +46,7 @@ func CreateConnectedAccount(
 		},
 
 		BusinessProfile: &stripe.AccountBusinessProfileParams{
-			MCC: stripe.String(businessCategory),
+			MCC: stripe.String(mcc),
 			URL: stripe.String(businessUrl),
 		},
 		BusinessType: stripe.String("individual"),

@@ -2,7 +2,6 @@ package subscription
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/johnyeocx/usual/server/db"
@@ -47,7 +46,6 @@ func CreateSubscription(
 		if err != nil {
 			return err
 		}
-		fmt.Println(*stripeSubId)
 		subscription := models.Subscription{
 			StripeSubID: *stripeSubId,
 			CustomerID: customerId,

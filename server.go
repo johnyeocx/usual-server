@@ -13,7 +13,8 @@ import (
 )
 
 func main() {
-
+	
+	// return
 
 	// 1. Load env file
 	err := godotenv.Load(".env")
@@ -32,6 +33,8 @@ func main() {
 
 	// 4. Connect to S3
 	sess := cloud.ConnectAWS()
+	// media.GenerateSubscribeQRCode(sess, 1)
+	// return
 
 	router := gin.Default()
 

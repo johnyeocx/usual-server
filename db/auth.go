@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/johnyeocx/usual/server/db/models"
@@ -17,6 +16,17 @@ func (a *AuthDB) InsertBusinessDetails(business *models.BusinessDetails) (*int64
 
 	hashedPassword, err := secure.GenerateHashFromStr(business.Password)
 	if err != nil {
+		return nil, err
+	}
+	
+	var businessId int64
+	err = a.DB.QueryRow(
+		`SELECT business_id FROM business WHERE email=$1 AND email_verified=false`, 
+		business.Email,).Scan(&businessId)
+	
+	if err != sql.ErrNoRows {
+		return &businessId, nil
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -50,9 +60,7 @@ func (a *AuthDB) InsertBusinessDetails(business *models.BusinessDetails) (*int64
 }
 
 func (a *AuthDB) GetEmailVerification(email string, verificationType string) (*string, error) {
-	fmt.Println(email)
-	fmt.Println(verificationType)
-	fmt.Println(time.Now().UTC())
+
 	selectStatement := `
 		SELECT hashed_otp from email_otp WHERE
 		email=$1 AND type=$2 AND $3 <= expiry

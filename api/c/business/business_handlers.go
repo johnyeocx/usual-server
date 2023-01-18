@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
+	"github.com/johnyeocx/usual/server/db/models"
 )
 
 
@@ -37,6 +38,14 @@ func getBusinessHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			log.Printf("failed to get business details: %v", err)
 			c.JSON(http.StatusBadRequest, err) 
 			return
+		}
+		
+		if len(res["product_categories"].([]models.ProductCategory))== 0 {
+			res["product_categories"] = make([]models.ProductCategory, 0)
+		}
+		
+		if len(res["sub_products"].([]models.SubscriptionProduct))== 0 {
+			res["sub_products"] = make([]models.SubscriptionProduct, 0)
 		}
 
 		c.JSON(http.StatusOK, res)

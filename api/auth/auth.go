@@ -29,7 +29,6 @@ func createBusiness(
 		}
 	}
 	
-	// businessDB.
 	// 2. check that email is valid
 	if !isEmailValid(business.Email) {
 		return nil, &models.RequestError{

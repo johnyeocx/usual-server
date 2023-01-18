@@ -28,7 +28,6 @@ func SendEmailVerification(
 
 	var body bytes.Buffer
 	t, _ := template.ParseFiles("./assets/html/verify_email.html")
-	fmt.Println(businessName, otp)
 	t.Execute(&body, struct {
 		Name    string
 		OTP string

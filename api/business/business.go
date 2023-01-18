@@ -31,14 +31,58 @@ func setBusinessProfile(
 	businessCategory string, 
 	businessUrl string, 
 	individual *models.Person,
-	stripeId 	string,
-) (*int, *models.RequestError) {
-	// 1. create individual
+	ipAddress string,
+) (*models.RequestError) {
+
+	// 1. get business by id
 	businessDB := db.BusinessDB{DB: sqlDB}
+	business, err := businessDB.GetBusinessByID(businessId)
+	if err != nil {
+		return &models.RequestError{
+			Err: errors.New("invalid business id"),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	// 1. Get MCC associated to category
+	foundMcc := false
+	var mcc string
+	for _, cat := range constants.BusinessCategories {
+		if cat["label"] == businessCategory {
+			mcc = cat["mcc"].(string)
+			foundMcc = true
+		}
+	}
 	
+
+	if (!foundMcc) {
+		return &models.RequestError{
+			Err: errors.New("invalid business category"),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	stripeId, err := my_stripe.CreateConnectedAccount(
+		business.Country,
+		business.Email,
+		ipAddress,
+		mcc,
+		businessUrl,
+		individual,
+	)
+
+	if err != nil {
+		return &models.RequestError{
+			Err: errors.New("failed to create stripe acct"),
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+
+	// 2. create individual	
 	individualId, err := businessDB.CreateIndividual(individual)
 	if err != nil {
-		return nil, &models.RequestError{
+		return &models.RequestError{
 			Err: fmt.Errorf("failed to create individual\n%v", err),
 			StatusCode: http.StatusBadGateway,
 		}
@@ -49,17 +93,17 @@ func setBusinessProfile(
 		businessCategory, 
 		businessUrl, 
 		*individualId,
-		stripeId,
+		*stripeId,
 	)
 
 	if err != nil {
-		return nil, &models.RequestError{
+		return &models.RequestError{
 			Err: fmt.Errorf("failed to create business profile\n%v", err),
 			StatusCode: http.StatusBadGateway,
 		}
 	}
 
-	return individualId, nil
+	return  nil
 }
 
 // UPDATE
