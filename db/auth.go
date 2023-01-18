@@ -26,7 +26,7 @@ func (a *AuthDB) InsertBusinessDetails(business *models.BusinessDetails) (*int64
 	
 	if err != sql.ErrNoRows {
 		return &businessId, nil
-	} else if err != nil {
+	} else if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
