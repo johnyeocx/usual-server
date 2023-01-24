@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  
+  "relevantDate": "2012-07-22T14:25-08:00",
+  "locations": [
+    {
+      "longitude": -122.3748889,
+      "latitude": 37.6189722
+    }
+  ],
+  "barcodes": [
+    {
+      "message": "SFOJFK JOHN APPLESEED LH451 2012-07-22T14:25-08:00",
+      "format": "PKBarcodeFormatQR",
+      "messageEncoding": "iso-8859-1"
+    }
+  ],
+  "organizationName": "Usual",
+  "description": "Skyport Boarding Pass",
+  "logoText": "Usual",
+  "foregroundColor": "rgb(0, 0, 0)",
+  "backgroundColor": "rgb(255, 255, 255)"
+}

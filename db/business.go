@@ -18,7 +18,7 @@ func (businessDB *BusinessDB) GetBusinessByID(businessId int) (*models.Business,
 
 	var business models.Business
 	if err := businessDB.DB.QueryRow(selectStatement, businessId).Scan(
-		&business.BusinessID,
+		&business.ID,
 		&business.Name,
 		&business.Email,
 		&business.Country,
@@ -34,6 +34,7 @@ func (businessDB *BusinessDB) GetBusinessByID(businessId int) (*models.Business,
 	return &business, nil
 }
 
+
 func (businessDB *BusinessDB) GetBusinessByEmail(email string) (*models.Business, error) {
 
 	selectStatement := `SELECT 
@@ -43,7 +44,7 @@ func (businessDB *BusinessDB) GetBusinessByEmail(email string) (*models.Business
 
 	var business models.Business
 	if err := businessDB.DB.QueryRow(selectStatement, email).Scan(
-		&business.BusinessID,
+		&business.ID,
 		&business.Name,
 		&business.Email,
 		&business.Country,

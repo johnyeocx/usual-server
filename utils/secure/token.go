@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -82,4 +83,18 @@ func ParseRefreshToken(tokenStr string) (string, error) {
 		log.Print("Err", err)
 		return "", err
 	}
+}
+
+func GenerateTokensFromId(id int) (*string, *string, error) {
+	accessToken, err := GenerateAccessToken(strconv.Itoa(id))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	refreshToken, err := GenerateRefreshToken(strconv.Itoa(id))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &accessToken, &refreshToken, nil
 }

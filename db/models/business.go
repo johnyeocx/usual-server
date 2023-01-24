@@ -1,7 +1,7 @@
 package models
 
 type Business struct {
-	BusinessID 		int `json:"business_id"`
+	ID 		int `json:"business_id"`
 	Name 			string `json:"name"`
 	Email 			string `json:"email"`
 	Country 		string `json:"country"`
@@ -10,6 +10,7 @@ type Business struct {
 	IndividualID 			*int `json:"individual_id"`
 	StripeID 		*string `json:"stripe_account_id"`
 	Description 	*string `json:"description"`
+	SubCount 		*int	`json:"sub_count"`
 }
 
 type Person struct {

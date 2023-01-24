@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	
+	// passes.GenerateCustomerPass()
 	// return
 
 	// 1. Load env file

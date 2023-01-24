@@ -8,8 +8,10 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
+	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/cloud"
+	"github.com/johnyeocx/usual/server/external/media"
 	"github.com/johnyeocx/usual/server/utils/middleware"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
@@ -25,6 +27,52 @@ func Routes(authRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session)
 	authRouter.POST("/login", loginHandler(sqlDB))
 	// authRouter.POST("/verify_msg_otp", verifyRegisterOTPHandler(conn))
 	// authRouter.POST("/register_user_details", registerUserDetailsHandler(conn))
+}
+
+func createBusinessHandler(sqlDB *sql.DB, s3Sess *session.Session) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		reqBody := models.BusinessDetails{}
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body for register business details: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		// 1. register business to sql
+		id, reqErr := createBusiness(sqlDB, &reqBody)
+		if reqErr != nil {
+			log.Println(reqErr.Err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
+
+		// 2. generate presigned url
+		key := "./business/profile_image/" + strconv.Itoa(int(*id))
+		url, err := cloud.GetImageUploadUrl(s3Sess, key)
+		if err != nil {
+			log.Printf("Failed to decode req body for register business details: %v\n", err)
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+
+		// 3. email verification code
+		emailOtp, reqErr := GenerateEmailOTP(sqlDB, reqBody.Email, "register")
+		if reqErr != nil {
+			log.Printf("Failed to generate email verification otp: %v\n", reqErr.Err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
+
+		// 4. send verification via email
+		err = media.SendEmailVerification(reqBody.Email, reqBody.Name, *emailOtp)
+		if err != nil {
+			log.Println("Failed to email verification code: ", err)
+			c.JSON(http.StatusBadGateway, err)
+		}
+		
+		c.JSON(200, url)
+	}
 }
 
 func validateTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
@@ -72,45 +120,6 @@ func refreshTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
-func createBusinessHandler(sqlDB *sql.DB, s3Sess *session.Session) gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-		reqBody := models.BusinessDetails{}
-		if err := c.BindJSON(&reqBody); err != nil {
-			log.Printf("Failed to decode req body for register business details: %v\n", err)
-			c.JSON(400, err)
-			return
-		}
-
-		// 1. register business to sql
-		id, reqErr := createBusiness(sqlDB, &reqBody)
-		if reqErr != nil {
-			log.Println(reqErr.Err)
-			c.JSON(reqErr.StatusCode, reqErr.Err)
-			return
-		}
-
-		// 2. generate presigned url
-		key := "./business/profile_image/" + strconv.Itoa(int(*id))
-		url, err := cloud.GetImageUploadUrl(s3Sess, key)
-		if err != nil {
-			log.Printf("Failed to decode req body for register business details: %v\n", err)
-			c.JSON(http.StatusBadGateway, err)
-			return
-		}
-
-		// 3. email verification code
-		reqErr = generateRegisterOTP(sqlDB, reqBody.Email, reqBody.Name)
-		if reqErr != nil {
-			log.Printf("Failed to generate email verification otp: %v\n", reqErr.Err)
-			c.JSON(reqErr.StatusCode, reqErr.Err)
-			return
-		}
-		
-		c.JSON(200, url)
-	}
-}
-
 func verifyEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -126,21 +135,37 @@ func verifyEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 		
 		// 2. Verify email
-		business, reqErr := verifyEmailOTP(sqlDB, reqBody.Email, reqBody.OTP)
+		reqErr := VerifyEmailOTP(sqlDB, reqBody.Email, reqBody.OTP, "register")
 		if reqErr != nil {
 			log.Println(reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)
 			return
 		}
 
+
+		// 3. Success, set user email verified
+		authDB := db.AuthDB{DB: sqlDB}
+		if err := authDB.SetBusinessVerified(reqBody.Email, true); err != nil {
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+
+		// 4. Get business by email
+		businessDB := db.BusinessDB{DB: sqlDB}
+		business, err := businessDB.GetBusinessByEmail(reqBody.Email); 
+		if err != nil {
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+
 		// 3. Return jwt token
-		accessToken, err := secure.GenerateAccessToken(strconv.Itoa(business.BusinessID))
+		accessToken, err := secure.GenerateAccessToken(strconv.Itoa(business.ID))
 		if err != nil {
 			c.JSON(500, err)
 			return
 		}
 
-		refreshToken, err := secure.GenerateRefreshToken(strconv.Itoa(business.BusinessID))
+		refreshToken, err := secure.GenerateRefreshToken(strconv.Itoa(business.ID))
 		if err != nil {
 			c.JSON(500, err)
 			return
@@ -177,7 +202,7 @@ func loginHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return 
 		}
 		
-		accessToken, refreshToken, err := generateTokens(businessObj.BusinessID)
+		accessToken, refreshToken, err := generateTokens(businessObj.ID)
 		if err != nil {
 			log.Println(err)
 			c.JSON(http.StatusBadGateway, err)

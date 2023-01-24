@@ -7,6 +7,23 @@ import (
 	"github.com/stripe/stripe-go/v74/paymentmethod"
 )
 
+func CreateCustomerNoPayment(newC *models.Customer) (*string, error) {
+	stripe.Key = stripeSecretKey()
+
+	// 2. CREATE CUSTOMER
+	params := &stripe.CustomerParams{
+		Name: &newC.Name,
+		Email: &newC.Email,
+	}
+	
+	c, err := customer.New(params)
+	if err != nil {
+		return nil, err
+	}
+
+	return &c.ID, nil
+}
+
 func CreateCustomer(newC *models.Customer, card *models.CreditCard) (*string, error) {
 	stripe.Key = stripeSecretKey()
 
@@ -24,8 +41,8 @@ func CreateCustomer(newC *models.Customer, card *models.CreditCard) (*string, er
 		InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{
 			DefaultPaymentMethod: paymentMethod,
 		},
-		
 	}
+
 	c, err := customer.New(params)
 	if err != nil {
 		return nil, err

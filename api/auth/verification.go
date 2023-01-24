@@ -8,7 +8,6 @@ import (
 
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
-	"github.com/johnyeocx/usual/server/external/media"
 	"github.com/johnyeocx/usual/server/utils/otp"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
@@ -17,24 +16,24 @@ var (
     registerExpiry = time.Minute * 20
 )
 
-func generateRegisterOTP(
+func GenerateEmailOTP(
     db *sql.DB, 
     email string,
-    name string,
-) (*models.RequestError) {
+    otpType string,
+) (*string, *models.RequestError) {
 
     // 1. check if expiry otp already exists
     deleteStatement := `
         DELETE from email_otp WHERE
-        email=$1 AND type='register'
+        email=$1 AND type=$2
     `
-    db.Exec(deleteStatement, email)
+    db.Exec(deleteStatement, email, otpType)
 
     // 2. generate otp
     otp := otp.GenerateOTP(6)
     hashedOtp, err := secure.GenerateHashFromStr(otp)
     if err != nil {
-        return &models.RequestError{
+        return nil, &models.RequestError{
             Err: fmt.Errorf("failed to hash otp: %v", err),
             StatusCode: http.StatusBadGateway,
         }
@@ -45,38 +44,66 @@ func generateRegisterOTP(
     insertStatement := `
         INSERT INTO email_otp 
         (email, type, hashed_otp, expiry) 
-        VALUES($1, 'register', $2, $3)
+        VALUES($1, $2, $3, $4)
     `
 	_, err = db.Exec(
         insertStatement, 
         email, 
+        otpType,
         hashedOtp,
         expiry,
     )
 
 	if err != nil {
-		return &models.RequestError{
+		return nil, &models.RequestError{
             Err: fmt.Errorf("failed to insert otp into sql: %v", err),
             StatusCode: http.StatusBadGateway,
         }
 	}
 
-
-    // 4. send verification via email
-    media.SendEmailVerification(email, name, otp)
-
-    if err != nil {
-        return &models.RequestError{
-            Err: err,
-            StatusCode: http.StatusBadGateway,
-        }
-    }
-
-    return nil
+    return &otp, nil
 }
 
 
-func verifyEmailOTP(
+func VerifyEmailOTP(
+    sqlDB *sql.DB, 
+    email string,
+    otp string,
+    otpType string,
+) (*models.RequestError) {
+
+    // 1. Find matching verification in sql
+    authDB := db.AuthDB{DB: sqlDB}
+    hashedOtp, err := authDB.GetEmailVerification(email, otpType)
+
+    if err != nil {
+        return &models.RequestError{
+            Err: fmt.Errorf("failed to get verification from db\n%v", err),
+            StatusCode: http.StatusBadRequest,
+        }
+    }
+
+    // 2. Check otp match
+    if !secure.StringMatchesHash(otp, *hashedOtp) {
+        return &models.RequestError{
+            Err: fmt.Errorf("invalid otp provided\n%v", err),
+            StatusCode: http.StatusUnauthorized,
+        };
+    }
+
+    // 3. Delete verification code from table
+    if err := authDB.DeleteEmailVerification(email, otpType); err != nil {
+        return &models.RequestError{
+            Err: fmt.Errorf("failed to delete email verification\n%v", err),
+            StatusCode: http.StatusBadGateway,
+        };
+    }
+
+    return  nil  
+}
+
+
+func VerifyCustomerEmailOTP(
     sqlDB *sql.DB, 
     email string,
     otp string,

@@ -104,6 +104,20 @@ func (a *AuthDB) SetBusinessVerified (email string, verified bool) (error) {
 	return nil
 }
 
+func (a *AuthDB) SetCustomerVerified (email string, verified bool) (error) {
+	insertStatement := `
+		UPDATE customer SET email_verified=$1 WHERE email=$2
+	`
+	
+	_, err := a.DB.Exec(insertStatement, verified, email)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (a *AuthDB) GetHashedPassword( email string) (*string, error) {
 
 	var hashedPassword  string

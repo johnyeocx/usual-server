@@ -33,3 +33,8 @@ type Invoice struct {
 	InvoiceURL			string			`json:"invoice_url"`
 	ApplicationFeeAmt	JsonNullInt64 	`json:"app_fee_amt"`
 }
+
+type ExploreResult struct {
+	Business 	Business			`json:"business"`
+	SubProduct 	SubscriptionProduct	`json:"sub_product"`
+}
