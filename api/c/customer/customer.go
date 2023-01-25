@@ -190,7 +190,7 @@ func CreateCFromSubscribe(
 	}
 }
 
-func GetCustomer(
+func GetCustomerData(
 	sqlDB *sql.DB,
 	cusId int,
 ) (map[string]interface{}, *models.RequestError) {
@@ -205,7 +205,94 @@ func GetCustomer(
 		}
 	}
 
+	subs, err := c.GetCustomerSubscriptions(cusId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// get customer cards
+	cards, err := c.GetCustomerCards(cusId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// get invoices
+	invoices, err := c.GetCustomerInvoices(cusId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+
 	return map[string]interface{}{
 		"customer": cus,
+		"subscriptions": subs,
+		"cards": cards,
+		"invoices": invoices,
+	}, nil
+}
+
+func AddCusCreditCard(
+	sqlDB *sql.DB,
+	cusId int,
+	card models.CreditCard,
+) (map[string]interface{}, *models.RequestError) {
+
+	c := db.CustomerDB{DB: sqlDB}
+
+	// 1. Get customer stripe id
+	cusStripeId, err := c.GetCustomerStripeId(cusId) 
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	
+	// 2. Add credit card to stripe
+	pm, err := my_stripe.AddNewCustomerCard(*cusStripeId, &card)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// 3. Update customer default payment id
+	cardId, err := c.AddNewCustomerCard(cusId, models.CardInfo{
+		Last4: pm.Card.Last4,
+		StripeID: pm.ID,
+		CusID: cusId,
+		Brand: string(pm.Card.Brand),
+	})
+
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	err = c.UpdateCusDefaultCard(cusId, *cardId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// 4. Set default
+	return map[string]interface{} {
+		"card_id": cardId,
+		"brand": pm.Card.Brand,
+		"last4": pm.Card.Last4,
 	}, nil
 }

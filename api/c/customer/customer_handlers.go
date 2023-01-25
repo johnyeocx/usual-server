@@ -14,14 +14,16 @@ import (
 )
 
 func Routes(customerRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
-	customerRouter.GET("", getCustomerHandler(sqlDB))
+	customerRouter.GET("data", getCustomerDataHandler(sqlDB))
 
 	customerRouter.POST("create", createCustomerHandler(sqlDB))
 	customerRouter.POST("verify_email", verifyCustomerEmailHandler(sqlDB))
 	customerRouter.POST("create_from_subscribe", createCFromSubscribeHandler(sqlDB))
+	
+	customerRouter.POST("add_card", addCustomerCardHandler(sqlDB))
 }
 
-func getCustomerHandler(sqlDB *sql.DB) gin.HandlerFunc {
+func getCustomerDataHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 		cusId, err := middleware.AuthenticateCId(c, sqlDB)
 
@@ -30,7 +32,7 @@ func getCustomerHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		res, reqErr := GetCustomer(sqlDB, *cusId)
+		res, reqErr := GetCustomerData(sqlDB, *cusId)
 		if reqErr != nil {
 			log.Println("Failed to get customer: ", reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)
@@ -121,5 +123,42 @@ func createCFromSubscribeHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		c.JSON(200, map[string]string{
 			"access_token": accessToken,
 		})
+	}
+}
+
+func addCustomerCardHandler(sqlDB *sql.DB) gin.HandlerFunc {
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+		}
+
+		reqBody := struct {
+			Number		string `json:"number"`
+			ExpMonth 	int64 `json:"expiry_month"`
+			ExpYear 	int64 `json:"expiry_year"`
+			CVC 		string `json:"cvc"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		res, reqErr := AddCusCreditCard(sqlDB, *cusId, models.CreditCard{
+			Number: reqBody.Number,
+			ExpMonth: reqBody.ExpMonth,
+			ExpYear: reqBody.ExpYear,
+			CVC: reqBody.CVC,
+		})
+
+		if reqErr != nil {
+			log.Println("Failed to add custoemr credit card:", reqErr.Err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
+
+		c.JSON(200, res)
 	}
 }

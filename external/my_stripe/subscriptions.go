@@ -11,6 +11,7 @@ import (
 func CreateSubscription(
 	customerId string, 
 	businessId string,
+	cardId		string,
 	subProduct models.SubscriptionProduct,
 ) (*string, error) {
 	stripe.Key = stripeSecretKey()
@@ -28,7 +29,7 @@ func CreateSubscription(
 		TransferData: &stripe.SubscriptionTransferDataParams{
 			Destination: stripe.String(businessId),
 		},
-
+		DefaultPaymentMethod: stripe.String(cardId),
 		CollectionMethod: stripe.String("charge_automatically"),
 	};
 	params.AddExpand("latest_invoice.payment_intent")
@@ -50,4 +51,6 @@ func CancelSubscription(subId string) (error) {
 
 	return err
 }
+
+
 

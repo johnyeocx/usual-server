@@ -3,23 +3,36 @@ package models
 import "time"
 
 type Customer struct {
-	ID 			int 		`json:"customer_id"`
-	Name		string 		`json:"name"`
-	Email 		string 		`json:"email"`
-	Address 	*Address 	`json:"address"`
-	StripeID 	string 		`json:"stripe_id"`
+	ID 					int 			`json:"customer_id"`
+	Name				string 			`json:"name"`
+	Email 				string 			`json:"email"`
+	Address 			*Address 		`json:"address"`
+	StripeID 			string 			`json:"stripe_id"`
+	DefaultCardID	 	JsonNullInt16	`json:"default_card_id"`
+}
+
+type CardInfo struct {
+	ID 			int 	`json:"card_id"`
+	Last4		string	`json:"last4"`
+	StripeID 	string	`json:"stripe_id"`
+	CusID		int		`json:"customer_id"`
+	Brand		string	`json:"brand"`
 }
 
 type Subscription struct {
-	ID 			int 		`json:"sub_id"`
-	StripeSubID	string 		`json:"stripe_sub_id"`
-	CustomerID	int 		`json:"customer_id"`
-	PlanID		int			`json:"plan_id"`
-	StartDate	time.Time	`json:"start_date"`
+	ID 			 int 					`json:"sub_id"`
+	StripeSubID	 string 				`json:"stripe_sub_id"`
+	CustomerID	 int 					`json:"customer_id"`
+	PlanID		 int					`json:"plan_id"`
+	StartDate	 time.Time				`json:"start_date"`
+	BusinessName *string 				`json:"business_name"`
+	BusinessID 	 *int 				`json:"business_id"`
+	SubProduct	 *SubscriptionProduct 	`json:"sub_product"`
+	CardID		int						`json:"card_id"`
 }
 
 type Invoice struct {
-	ID					int 			`json:"int"`
+	ID					int 			`json:"invoice_id"`
 	InStripeID			string 			`json:"stripe_in_id"`
 	CusStripeID			string 			`json:"stripe_cus_id"`
 	SubStripeID			JsonNullString 	`json:"stripe_sub_id"`
@@ -31,7 +44,12 @@ type Invoice struct {
 	Total				int				`json:"total"`
 	Created				time.Time 		`json:"created"`
 	InvoiceURL			string			`json:"invoice_url"`
+	DefaultPaymentMethod	JsonNullString		`json:"default_payment_method"`
 	ApplicationFeeAmt	JsonNullInt64 	`json:"app_fee_amt"`
+
+	// NULLLABLES
+	Subscription		*Subscription   `json:"sub"`
+	CardInfo			*CardInfo		`json:"card_info"`
 }
 
 type ExploreResult struct {

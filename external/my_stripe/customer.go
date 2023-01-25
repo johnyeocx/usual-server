@@ -28,7 +28,7 @@ func CreateCustomer(newC *models.Customer, card *models.CreditCard) (*string, er
 	stripe.Key = stripeSecretKey()
 
 	// 1. CREATE PAYMENT METHOD
-	paymentMethod, err := CreatePaymentMethod(card)
+	pm, err := CreatePaymentMethod(card)
 	if err != nil {
 		return nil, err
 	}
@@ -37,9 +37,9 @@ func CreateCustomer(newC *models.Customer, card *models.CreditCard) (*string, er
 	params := &stripe.CustomerParams{
 		Name: &newC.Name,
 		Email: &newC.Email,
-		PaymentMethod: paymentMethod,
+		PaymentMethod: &pm.ID,
 		InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{
-			DefaultPaymentMethod: paymentMethod,
+			DefaultPaymentMethod: &pm.ID,
 		},
 	}
 
@@ -51,7 +51,7 @@ func CreateCustomer(newC *models.Customer, card *models.CreditCard) (*string, er
 	return &c.ID, nil
 }
 
-func CreatePaymentMethod(card *models.CreditCard) (*string, error) {
+func CreatePaymentMethod(card *models.CreditCard) (*stripe.PaymentMethod, error) {
 	stripe.Key = stripeSecretKey()
 
 	params := &stripe.PaymentMethodParams{
@@ -71,5 +71,40 @@ func CreatePaymentMethod(card *models.CreditCard) (*string, error) {
 		return nil, err
 	}
 
-	return &pm.ID, nil
+	return pm, nil
+}
+
+func AddNewCustomerCard(cusId string, card *models.CreditCard) (*stripe.PaymentMethod, error) {
+	stripe.Key = stripeSecretKey()
+
+	// 1. CREATE PAYMENT METHOD
+	pm, err := CreatePaymentMethod(card)
+	if err != nil {
+		return nil, err
+	}
+
+	attachParams := &stripe.PaymentMethodAttachParams{
+		Customer: stripe.String(cusId),
+	  }
+	_, err = paymentmethod.Attach(
+		pm.ID,
+		attachParams,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. CREATE CUSTOMER
+	params := &stripe.CustomerParams{
+		InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{
+			DefaultPaymentMethod: &pm.ID,
+		},
+	}
+
+	_, err = customer.Update(cusId, params)
+	if err != nil {
+		return nil, err
+	}
+
+	return pm, nil
 }

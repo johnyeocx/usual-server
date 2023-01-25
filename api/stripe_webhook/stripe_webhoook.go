@@ -2,6 +2,7 @@ package stripe_webhook
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/johnyeocx/usual/server/db"
@@ -10,6 +11,7 @@ import (
 
 func InsertInvoice(sqlDB *sql.DB, data map[string]interface{}) (error) {
 	invoice := ParseInvoicePaid(data)
+	fmt.Println(invoice.Status)
 
 	i := db.InvoiceDB{DB: sqlDB}
 	err := i.InsertInvoice(invoice)
@@ -43,6 +45,15 @@ func ParseInvoicePaid(data map[string]interface{})(*models.Invoice) {
 		appFeeAmt.Valid = true
 	}
 
+
+	var defaultPM models.JsonNullString
+	if data["default_payment_method"] == nil {
+		defaultPM.Valid = false;
+	} else {
+		defaultPM.String = data["default_payment_method"].(string)
+		defaultPM.Valid = true
+	}
+	
 	invoice := models.Invoice{
 		InStripeID: data["id"].(string),
 		CusStripeID: data["customer"].(string),
@@ -56,6 +67,7 @@ func ParseInvoicePaid(data map[string]interface{})(*models.Invoice) {
 		Created: createdTimestamp,
 		InvoiceURL: data["hosted_invoice_url"].(string),
 		ApplicationFeeAmt: appFeeAmt,
+		DefaultPaymentMethod: defaultPM,
 	}
 
 	return &invoice
