@@ -22,10 +22,17 @@ type SubscriptionPlan struct {
 	RecurringDuration	TimeFrame		`json:"recurring_duration"`
 	UnitAmount			int			`json:"unit_amount"`
 	Currency			string			`json:"currency"`
-	UsageUnlimited		bool			`json:"usage_unlimited"`
-	UsageDuration		*TimeFrame		`json:"usage_duration"`
-	UsageAmount			*JsonNullInt16	`json:"usage_amount"`
 	StripePriceID 		*string 		`json:"stripe_price_id"`
+	Usages				*[]SubUsage		`json:"usages"`
+}
+
+type SubUsage struct {
+	ID 				int 			`json:"sub_usage_id"`
+	PlanID 			int 			`json:"plan_id"`
+	Title 			string 			`json:"title"`
+	Unlimited 		bool 			`json:"unlimited"`
+	Interval		JsonNullString 	`json:"interval"`
+	Amount			JsonNullInt16 	`json:"amount"`
 }
 
 type InvoiceData struct {
@@ -39,7 +46,6 @@ type InvoiceData struct {
 	Attempted			bool			`json:"attempted"`
 	ApplicationFeeAmt	JsonNullInt64	`json:"app_fee_amt"`
 }
-
 
 type ProductCategory struct {
 	Title		string `json:"title"`

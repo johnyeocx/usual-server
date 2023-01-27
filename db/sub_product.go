@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/johnyeocx/usual/server/db/models"
 )
@@ -15,9 +16,7 @@ func (s *BusinessDB) GetBusinessSubProducts(
 
 	selectStatement := `SELECT 
 	product.product_id, business_id, name, description, category_id, stripe_product_id,
-	plan_id, currency, recurring_interval, recurring_interval_count, unit_amount,
-
-	usage_unlimited, usage_interval, usage_interval_count, usage_amount
+	plan_id, currency, recurring_interval, recurring_interval_count, unit_amount
 
 	from product JOIN subscription_plan on product.product_id = subscription_plan.product_id
 	WHERE business_id=$1 ORDER BY product.category_id, product.product_id ASC`
@@ -40,10 +39,6 @@ func (s *BusinessDB) GetBusinessSubProducts(
 		var product models.Product
 		var subPlan models.SubscriptionPlan
 
-		var usageDurationInterval models.JsonNullString
-		var usageDurationIntervalCount models.JsonNullInt16
-		var usageAmount models.JsonNullInt16
-
         if err := rows.Scan(
 			&product.ProductID,
 			&product.BusinessID,
@@ -57,21 +52,10 @@ func (s *BusinessDB) GetBusinessSubProducts(
 			&subPlan.RecurringDuration.Interval,
 			&subPlan.RecurringDuration.IntervalCount,
 			&subPlan.UnitAmount,
-			&subPlan.UsageUnlimited,
-			&usageDurationInterval,
-			&usageDurationIntervalCount,
-			&usageAmount,
 		); err != nil {
             return &subProducts, err
         }
-		
-		if (!subPlan.UsageUnlimited) {
-			subPlan.UsageDuration = &models.TimeFrame{
-				Interval: usageDurationInterval,
-				IntervalCount: usageDurationIntervalCount,
-			}
-			subPlan.UsageAmount = &usageAmount
-		}
+
 		
         subProducts = append(subProducts, models.SubscriptionProduct{
 			Product: product,
@@ -170,7 +154,7 @@ func (s *BusinessDB) GetSubProductDeleteData(
 	var stripeProductId string;
 	var catId int;
 	var stripePriceId string;
-	var planId string;
+	var planId int;
 	if err := s.DB.QueryRow(stmt1, productId).Scan(
 		&stripeProductId,
 		&catId,
@@ -358,7 +342,7 @@ func (s *BusinessDB) InsertProduct(
 }
 
 
-func (s *BusinessDB) InsertSubscriptionPlanUnlimitedUsage(
+func (s *BusinessDB) InsertSubPlan(
 	productId int, 
 	subscription *models.SubscriptionPlan,
 	stripePriceId string,
@@ -369,15 +353,15 @@ func (s *BusinessDB) InsertSubscriptionPlanUnlimitedUsage(
 	err := s.DB.QueryRow(`INSERT into 
 		subscription_plan (product_id, currency,
 			recurring_interval, recurring_interval_count, 
-			unit_amount, usage_unlimited, stripe_price_id) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING 
+			unit_amount, stripe_price_id) 
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING 
 		plan_id, product_id, currency, recurring_interval, recurring_interval_count,
-		unit_amount, usage_unlimited, stripe_price_id
+		unit_amount, stripe_price_id
 		`, 
 		
 		productId, subscription.Currency,
 		subscription.RecurringDuration.Interval, subscription.RecurringDuration.IntervalCount,
-		subscription.UnitAmount, subscription.UsageUnlimited, stripePriceId,
+		subscription.UnitAmount, stripePriceId,
 	).Scan(
 		&plan.PlanID,
 		&plan.ProductID,
@@ -385,7 +369,6 @@ func (s *BusinessDB) InsertSubscriptionPlanUnlimitedUsage(
 		&plan.RecurringDuration.Interval,
 		&plan.RecurringDuration.IntervalCount,
 		&plan.UnitAmount,
-		&plan.UsageUnlimited,
 		&plan.StripePriceID,
 	)
 
@@ -397,59 +380,63 @@ func (s *BusinessDB) InsertSubscriptionPlanUnlimitedUsage(
 	return &plan, nil
 }
 
+func (s *BusinessDB) InsertUsages(
+	planId int,
+	usages []models.SubUsage,
+) ([]models.SubUsage, error) {
 
-func (s *BusinessDB) InsertSubscriptionPlanFiniteUsage(
-	productId int, 
-	subscription *models.SubscriptionPlan,
-	stripePriceId string,
-) (*models.SubscriptionPlan, error) {
+	numCols := 5
+	valueStrings := make([]string, 0, len(usages))
+    valueArgs := make([]interface{}, 0, len(usages) * numCols)
+	
+    for i, usage := range (usages) {
+		j := i * numCols + 1
+		valueString := fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", j, j + 1, j + 2, j + 3, j + 4)
+        valueStrings = append(valueStrings, valueString)
+        valueArgs = append(valueArgs, usage.Title)
+        valueArgs = append(valueArgs, usage.Unlimited)
+        valueArgs = append(valueArgs, usage.Interval)
+        valueArgs = append(valueArgs, usage.Amount)
+        valueArgs = append(valueArgs, planId)
+    }
 
-	var plan models.SubscriptionPlan;
+	
 
-	var insertedUsageDuration models.TimeFrame
-	var usageAmount models.JsonNullInt16;
+	query := fmt.Sprintf(`INSERT into subscription_usage 
+	(title, unlimited, interval, amount, plan_id) 
+	VALUES %s RETURNING 
+	sub_usage_id, title, unlimited, interval, amount
+	`, strings.Join(valueStrings, ","))
 
-	err := s.DB.QueryRow(`INSERT into 
-		subscription_plan (product_id, currency,
-			recurring_interval, recurring_interval_count, 
-			unit_amount, usage_unlimited,
-			usage_interval, usage_interval_count, 
-			usage_amount, stripe_price_id) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING 
-		plan_id, product_id, currency, recurring_interval, recurring_interval_count,
-		unit_amount, usage_unlimited, usage_interval, usage_interval_count, usage_amount, stripe_price_id
-		`, 
-		
-		productId, subscription.Currency,
-		subscription.RecurringDuration.Interval, subscription.RecurringDuration.IntervalCount,
-		subscription.UnitAmount, subscription.UsageUnlimited,
-		subscription.UsageDuration.Interval, subscription.UsageDuration.IntervalCount,
-		*subscription.UsageAmount, stripePriceId,
 
-	).Scan(
-		&plan.PlanID,
-		&plan.ProductID,
-		&plan.Currency,
-		&plan.RecurringDuration.Interval,
-		&plan.RecurringDuration.IntervalCount,
-		&plan.UnitAmount,
-		&plan.UsageUnlimited,
-		&insertedUsageDuration.Interval,
-		&insertedUsageDuration.IntervalCount,
-		&usageAmount,
-		&plan.StripePriceID,
-	)
+	rows, err := s.DB.Query(query, valueArgs...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	returnedUsages := []models.SubUsage{}
+	for rows.Next() {
+		usage := models.SubUsage{}
+		rows.Scan(
+			&usage.ID,
+			&usage.Title,
+			&usage.Unlimited,
+			&usage.Interval,
+			&usage.Amount,
+		)
+
+		returnedUsages = append(returnedUsages, usage)
+	}
 
 	if err != nil {
 		log.Print(err)
 		return nil, err
 	}
-
-	plan.UsageDuration = &insertedUsageDuration
-	plan.UsageAmount = &usageAmount
 	
-	return &plan, nil
+	return returnedUsages, nil
 }
+
 
 
 // PATCH, EDITS
@@ -623,49 +610,50 @@ func (s *BusinessDB) SetSubProductUsage(
 	usageDuration *models.TimeFrame,
 	usageAmount *int,
 ) (error) {
-	
-	// CHECK THAT PRODUCT BELONGS TO BUSINESS ID
-	var businessMatch bool
-	err := s.DB.QueryRow(`SELECT business_id=$1 from product WHERE product_id=$2`, 
-		businessId, productId,
-	).Scan(&businessMatch)
-
-	if err != nil {
-		return err
-	}
-
-	if !businessMatch {
-		return errors.New("product id does not belong to business id")
-	}
-	
-
-	if (usageUnlimited) {
-		nullInt := sql.NullInt16{Valid: false}
-		nullString := sql.NullString{Valid: false}
-		_, err = s.DB.Exec(`UPDATE subscription_plan SET 
-			usage_unlimited=$1, usage_interval=$2, usage_interval_count=$3, usage_amount=$4
-			WHERE product_id=$5 AND plan_id=$6`, 
-			usageUnlimited, nullString, nullInt, nullInt, productId, planId,
-		)
-
-		if err != nil {
-			return err
-		}
-	} else {
-		_, err = s.DB.Exec(`UPDATE subscription_plan SET 
-			usage_unlimited=$1, usage_interval=$2, usage_interval_count=$3, usage_amount=$4
-			WHERE product_id=$5 AND plan_id=$6`, 
-			usageUnlimited, 
-			usageDuration.Interval.String, usageDuration.IntervalCount.Int16, usageAmount, 
-			productId, planId,
-		)
-
-		if err != nil {
-			return err
-		}
-	}
 
 	return nil
+	// // CHECK THAT PRODUCT BELONGS TO BUSINESS ID
+	// var businessMatch bool
+	// err := s.DB.QueryRow(`SELECT business_id=$1 from product WHERE product_id=$2`, 
+	// 	businessId, productId,
+	// ).Scan(&businessMatch)
+
+	// if err != nil {
+	// 	return err
+	// }
+
+	// if !businessMatch {
+	// 	return errors.New("product id does not belong to business id")
+	// }
+	
+
+	// if (usageUnlimited) {
+	// 	nullInt := sql.NullInt16{Valid: false}
+	// 	nullString := sql.NullString{Valid: false}
+	// 	_, err = s.DB.Exec(`UPDATE subscription_plan SET 
+	// 		usage_unlimited=$1, usage_interval=$2, usage_interval_count=$3, usage_amount=$4
+	// 		WHERE product_id=$5 AND plan_id=$6`, 
+	// 		usageUnlimited, nullString, nullInt, nullInt, productId, planId,
+	// 	)
+
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// } else {
+	// 	_, err = s.DB.Exec(`UPDATE subscription_plan SET 
+	// 		usage_unlimited=$1, usage_interval=$2, usage_interval_count=$3, usage_amount=$4
+	// 		WHERE product_id=$5 AND plan_id=$6`, 
+	// 		usageUnlimited, 
+	// 		usageDuration.Interval.String, usageDuration.IntervalCount.Int16, usageAmount, 
+	// 		productId, planId,
+	// 	)
+
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
+
+	// return nil
 }
 
 func (s *BusinessDB) DeleteSubscription(
@@ -677,11 +665,17 @@ func (s *BusinessDB) DeleteSubscription(
 	return err
 }
 
-func (s *BusinessDB) DeleteProductAndPlan(
+func (s *BusinessDB) DeleteSubProduct(
 	productId int,
+	planId int,
 ) (error) {
 
 	_, err := s.DB.Exec(`DELETE from subscription_plan WHERE product_id=$1`, productId)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.DB.Exec(`DELETE from subscription_usage WHERE plan_id=$1`, planId)
 	if err != nil {
 		return err
 	}

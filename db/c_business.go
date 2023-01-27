@@ -135,8 +135,7 @@ func (s *BusinessDB) GetCBusinessSubProducts(
 
 	selectStatement := `SELECT 
 	p.product_id, p.name, p.description, p.category_id, sp.plan_id, sp.currency, 
-	recurring_interval, recurring_interval_count, unit_amount,
-	usage_unlimited, usage_interval, usage_interval_count, usage_amount, COUNT(DISTINCT c.customer_id) as sub_count
+	recurring_interval, recurring_interval_count, unit_amount, COUNT(DISTINCT c.customer_id) as sub_count
 
 	from product as p
 	JOIN subscription_plan as sp on p.product_id = sp.product_id
@@ -160,10 +159,6 @@ func (s *BusinessDB) GetCBusinessSubProducts(
 		var product models.Product
 		var subPlan models.SubscriptionPlan
 
-		var usageDurationInterval models.JsonNullString
-		var usageDurationIntervalCount models.JsonNullInt16
-		var usageAmount models.JsonNullInt16
-
         if err := rows.Scan(
 			&product.ProductID,
 			&product.Name,
@@ -174,22 +169,11 @@ func (s *BusinessDB) GetCBusinessSubProducts(
 			&subPlan.RecurringDuration.Interval,
 			&subPlan.RecurringDuration.IntervalCount,
 			&subPlan.UnitAmount,
-			&subPlan.UsageUnlimited,
-			&usageDurationInterval,
-			&usageDurationIntervalCount,
-			&usageAmount,
 			&product.SubCount,
 		); err != nil {
             return &subProducts, err
         }
-		
-		if (!subPlan.UsageUnlimited) {
-			subPlan.UsageDuration = &models.TimeFrame{
-				Interval: usageDurationInterval,
-				IntervalCount: usageDurationIntervalCount,
-			}
-			subPlan.UsageAmount = &usageAmount
-		}
+	
 		
         subProducts = append(subProducts, models.SubscriptionProduct{
 			Product: product,

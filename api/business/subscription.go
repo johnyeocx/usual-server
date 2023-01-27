@@ -8,61 +8,6 @@ import (
 	"github.com/johnyeocx/usual/server/external/my_stripe"
 )
 
-func createSubProduct (
-	sqlDB *sql.DB,
-	businessId int,
-	category *models.ProductCategory,
-	product *models.Product, 
-	subPlan *models.SubscriptionPlan,
-) (*int, *models.SubscriptionProduct, error) {
-
-	
-	db := db.BusinessDB{DB: sqlDB}
-
-	// 1. Insert new category id
-	var newCatId *int;
-	var catId = category.CategoryID
-	
-	if (category.CategoryID == nil) {
-		id, err := db.InsertProductCategory(businessId, category.Title)
-		if err != nil {
-			return nil, nil, err
-		}
-
-
-		newCatId = id;
-		catId = id;
-	}
-
-	stripeProductId, stripePriceId, err := my_stripe.CreateNewSubProduct(product.Name, *subPlan)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	
-	insertedProduct, err := db.InsertProduct(businessId, catId, product, *stripeProductId)
-	if err != nil {
-		return nil, nil, err
-	}
-
-
-	var insertedPlan *models.SubscriptionPlan
-	if (subPlan.UsageUnlimited) {
-		insertedPlan, err = db.InsertSubscriptionPlanUnlimitedUsage(insertedProduct.ProductID, subPlan, *stripePriceId)
-	} else {
-		insertedPlan, err = db.InsertSubscriptionPlanFiniteUsage(insertedProduct.ProductID, subPlan, *stripePriceId)
-	}
-
-	if err != nil {
-		return nil, nil, err
-	}
-	
-
-	return newCatId, &models.SubscriptionProduct{
-		Product: *insertedProduct,
-		SubPlan: *insertedPlan,
-	}, nil
-}
 
 func GetBusinessProducts(
 	sqlDB *sql.DB,

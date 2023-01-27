@@ -4,77 +4,13 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"strconv"
 
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
-	"github.com/johnyeocx/usual/server/external/cloud"
 	"github.com/johnyeocx/usual/server/utils/middleware"
 )
 
-func createSubProductHandler(sqlDB *sql.DB, s3Sess *session.Session)  gin.HandlerFunc {
-	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, err)
-		}
-
-		reqBody := struct {
-			ProductCategory	models.ProductCategory `json:"category"`
-			Product			models.Product	`json:"product"`
-			SubPlan			models.SubscriptionPlan `json:"subscription_plan"`
-		}{}
-			
-		if err := c.BindJSON(&reqBody); err != nil {
-			log.Printf("Failed to decode req body for verify otp: %v\n", err)
-			c.JSON(400, err)
-			return
-		}
-
-
-		// 1. get business by id
-		reqBody.SubPlan.Currency = "GBP" // default for now
-		newCatId, subProduct, err := createSubProduct(
-			sqlDB, 
-			*businessId, 
-			&reqBody.ProductCategory, 
-			&reqBody.Product, 
-			&reqBody.SubPlan,
-		)
-
-
-		if err != nil {
-			log.Printf("Failed to create sub product: %v", err)
-			c.JSON(http.StatusBadGateway, err)
-			return
-		}
-
-		key := "./business/product_image/" + strconv.Itoa(subProduct.Product.ProductID)
-		url, err := cloud.GetImageUploadUrl(s3Sess, key)
-		if err != nil {
-			log.Printf("Failed to decode req body for register business details: %v\n", err)
-			c.JSON(http.StatusBadGateway, err)
-			return
-		}
-		
-
-		resBody := map[string]interface{} {
-			"subscription_product": subProduct,
-			"upload_url": url,
-		}
-
-		if (newCatId != nil) {
-			resBody["new_category"] = models.ProductCategory {
-				CategoryID: newCatId,
-				Title: reqBody.ProductCategory.Title,
-			}
-		}
-
-		c.JSON(200, resBody)
-	}
-}
 
 func setProductDescriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 

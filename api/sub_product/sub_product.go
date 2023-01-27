@@ -13,6 +13,90 @@ import (
 )
 
 
+func createSubProduct (
+	sqlDB *sql.DB,
+	businessId int,
+	category *models.ProductCategory,
+	product *models.Product, 
+	subPlan *models.SubscriptionPlan,
+	usages []models.SubUsage,
+) (*int, *models.SubscriptionProduct, error) {
+
+	
+	db := db.BusinessDB{DB: sqlDB}
+
+	// 1. Insert new category id
+	var newCatId *int;
+	var catId = category.CategoryID
+	
+	if (category.CategoryID == nil) {
+		id, err := db.InsertProductCategory(businessId, category.Title)
+		if err != nil {
+			return nil, nil, err
+		}
+
+
+		newCatId = id;
+		catId = id;
+	}
+
+	stripeProductId, stripePriceId, err := my_stripe.CreateNewSubProduct(product.Name, *subPlan)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	
+	// 1. insert subscription
+	insertedProduct, err := db.InsertProduct(businessId, catId, product, *stripeProductId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 2. insert subscription
+	insertedPlan, err := db.InsertSubPlan(insertedProduct.ProductID, subPlan, *stripePriceId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 3. insert usages
+	insertedUsages, err := db.InsertUsages(insertedPlan.PlanID, usages)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	insertedPlan.Usages = &insertedUsages
+
+	if err != nil {
+		return nil, nil, err
+	}
+	
+
+	return newCatId, &models.SubscriptionProduct{
+		Product: *insertedProduct,
+		SubPlan: *insertedPlan,
+	}, nil
+}
+
+func GetBusinessProducts(
+	sqlDB *sql.DB,
+	businessId int,
+) (*[]models.ProductCategory, *[]models.SubscriptionProduct, error) {
+
+	b := db.BusinessDB{DB: sqlDB}
+	productCategories, err := b.GetBusinessProductCategories(businessId)
+	if err != nil {
+		return nil, nil,err
+	}
+
+	subProducts, err := b.GetBusinessSubProducts(businessId)
+	if err != nil {
+		return nil,nil, err
+	}
+
+	return productCategories, subProducts, nil
+}
+
+
 func GetSubProductStats(
 	sqlDB *sql.DB, 
 	businessId int, 
@@ -188,7 +272,7 @@ func DeleteSubProduct(
 	}
 
 	// 5. Delete product from DB
-	err = b.DeleteProductAndPlan(productId)
+	err = b.DeleteSubProduct(productId, (*data)["plan_id"].(int))
 	if err != nil {
 		return &models.RequestError{
 			Err: err,

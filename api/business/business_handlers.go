@@ -19,7 +19,6 @@ func Routes(businessRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 
 	businessRouter.POST("set_profile", setBusinessProfileHandler(sqlDB, s3Sess))
 	businessRouter.POST("set_description", updateBusinessDescriptionHandler(sqlDB))
-	businessRouter.POST("add_subscription_product", createSubProductHandler(sqlDB, s3Sess))
 	
 	businessRouter.PATCH("account/category", updateBusinessCategoryHandler(sqlDB))
 	businessRouter.PATCH("account/name", updateBusinessNameHandler(sqlDB))
