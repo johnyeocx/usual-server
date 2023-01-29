@@ -19,6 +19,7 @@ require (
 require (
 	github.com/alvinbaena/passkit v0.0.0-20221209223307-a346be326baa // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/stripe/stripe-go v70.15.0+incompatible // indirect
 	gopkg.in/go-playground/colors.v1 v1.2.0 // indirect
 )

@@ -209,6 +209,45 @@ func (s *BusinessDB) GetProductCatId(
 
 // Sub Product Stats
 
+func (s *BusinessDB) GetSubProductUsages(
+	productId int,
+) (*[]models.SubUsage, error) {
+	stmt := `SELECT su.sub_usage_id, su.title, su.unlimited, su.interval, su.amount from product as 
+	p JOIN subscription_plan as sp ON p.product_id=sp.product_id
+	JOIN subscription_usage as su ON su.plan_id=sp.plan_id
+	WHERE p.product_id=$1`
+
+	
+	rows, err := s.DB.Query(stmt, productId)
+	if err != nil {
+		return nil, err
+	}
+	
+
+	defer rows.Close()
+
+	usages := []models.SubUsage{}
+	for rows.Next() {
+		var usage models.SubUsage
+
+        if err := rows.Scan(
+			&usage.ID,
+			&usage.Title,
+			&usage.Unlimited,
+			&usage.Interval,
+			&usage.Amount,
+		); err != nil {
+			continue
+        }
+		
+		usages = append(usages, usage)
+    }
+
+	
+	return &usages, nil
+}
+
+
 func (s *BusinessDB) GetSubProductInvoices(
 	productId int,
 ) (*[]models.InvoiceData, error) {
@@ -474,6 +513,46 @@ func (s *BusinessDB) BusinessOwnsProduct(
 	return product, err
 }
 
+func (s *BusinessDB) BusinessOwnsPlan(
+	businessId int,
+	planId int,
+) (*models.SubscriptionPlan, error) {
+
+	// CHECK THAT PRODUCT & PLAN BELONGS TO BUSINESS ID
+	plan := models.SubscriptionPlan{}
+	err := s.DB.QueryRow(`
+		SELECT sp.plan_id FROM
+		business as b JOIN product as p on b.business_id=p.business_id
+		JOIN subscription_plan as sp ON p.product_id=sp.product_id
+		WHERE b.business_id=$1 AND sp.plan_id=$2`, 
+		businessId, planId,
+	).Scan(&plan.PlanID)
+
+	if err != nil {
+		return nil, err
+	}
+	return &plan, nil
+}
+
+func (s *BusinessDB) BusinessOwnsUsage(
+	businessId int,
+	subUsageId int,
+) (*models.SubUsage, error) {
+	stmt := `SELECT su.sub_usage_id from subscription_usage as su 
+	JOIN subscription_plan as sp ON sp.plan_id=su.plan_id
+	JOIN product as p on p.product_id=sp.product_id
+	JOIN business as b on b.business_id=p.business_id
+	WHERE b.business_id=$1 AND su.sub_usage_id=$2`
+	
+	subUsage := models.SubUsage{}
+	if err := s.DB.QueryRow(stmt, businessId, subUsageId).Scan(
+		&subUsage.ID,
+	); err != nil {
+		return nil, err
+	}
+	return &subUsage, nil
+}
+
 
 func (s *BusinessDB) GetStripePriceId(
 	planId int,
@@ -602,58 +681,39 @@ func (s *BusinessDB) SetSubProductPricing(
 	return err
 }
 
-func (s *BusinessDB) SetSubProductUsage(
+func (s *BusinessDB) UpdateSubProductUsage(
 	businessId int,
-	productId int,
-	planId int,
-	usageUnlimited bool, 
-	usageDuration *models.TimeFrame,
-	usageAmount *int,
+	subUsageId int,
+	newUsage models.SubUsage,
 ) (error) {
+	fmt.Println(subUsageId)
+	fmt.Println(businessId)
+	stmt := `UPDATE 
+		subscription_usage
+		SET title=$1, unlimited=$2, interval=$3, amount=$4 WHERE sub_usage_id=$5
+		`
+	_, err := s.DB.Exec(stmt, 
+		newUsage.Title, newUsage.Unlimited, newUsage.Interval, newUsage.Amount,
+subUsageId)
+	return err
+}
 
-	return nil
-	// // CHECK THAT PRODUCT BELONGS TO BUSINESS ID
-	// var businessMatch bool
-	// err := s.DB.QueryRow(`SELECT business_id=$1 from product WHERE product_id=$2`, 
-	// 	businessId, productId,
-	// ).Scan(&businessMatch)
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if !businessMatch {
-	// 	return errors.New("product id does not belong to business id")
-	// }
+func (s *BusinessDB) AddSubProductUsage(
+	businessId int,
+	planId int,
+	newUsage models.SubUsage,
+) (*int, error) {
+	stmt := `INSERT into  
+			subscription_usage (title, unlimited, interval, amount, plan_id) VALUES
+			($1, $2, $3, $4, $5) RETURNING sub_usage_id
+		`
 	
-
-	// if (usageUnlimited) {
-	// 	nullInt := sql.NullInt16{Valid: false}
-	// 	nullString := sql.NullString{Valid: false}
-	// 	_, err = s.DB.Exec(`UPDATE subscription_plan SET 
-	// 		usage_unlimited=$1, usage_interval=$2, usage_interval_count=$3, usage_amount=$4
-	// 		WHERE product_id=$5 AND plan_id=$6`, 
-	// 		usageUnlimited, nullString, nullInt, nullInt, productId, planId,
-	// 	)
-
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// } else {
-	// 	_, err = s.DB.Exec(`UPDATE subscription_plan SET 
-	// 		usage_unlimited=$1, usage_interval=$2, usage_interval_count=$3, usage_amount=$4
-	// 		WHERE product_id=$5 AND plan_id=$6`, 
-	// 		usageUnlimited, 
-	// 		usageDuration.Interval.String, usageDuration.IntervalCount.Int16, usageAmount, 
-	// 		productId, planId,
-	// 	)
-
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
-
-	// return nil
+	var subUsageId int
+	err := s.DB.QueryRow(stmt, newUsage.Title, newUsage.Unlimited, newUsage.Interval, newUsage.Amount, planId).Scan(&subUsageId)
+	if err != nil {
+		return nil, err
+	}
+	return &subUsageId, err
 }
 
 func (s *BusinessDB) DeleteSubscription(

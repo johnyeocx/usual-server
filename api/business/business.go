@@ -12,18 +12,7 @@ import (
 	"github.com/johnyeocx/usual/server/external/my_stripe"
 )
 
-func getBusinessStats(
-	sqlDB *sql.DB,
-	businessId int,
-) ( *[]models.Customer, error) {
-	b := db.BusinessDB{DB: sqlDB}
-	subscribers, err := b.GetBusinessSubscribers(businessId)
-	if err != nil {
-		return nil, err
-	}
 
-	return subscribers, nil
-}
 
 func setBusinessProfile(
 	sqlDB *sql.DB, 

@@ -16,6 +16,7 @@ import (
 
 func Routes(businessRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
 	businessRouter.GET("", getBusinessHandler(sqlDB))
+	businessRouter.GET("/total_and_payouts", getTotalAndPayoutsHandler(sqlDB))
 
 	businessRouter.POST("set_profile", setBusinessProfileHandler(sqlDB, s3Sess))
 	businessRouter.POST("set_description", updateBusinessDescriptionHandler(sqlDB))
@@ -33,7 +34,7 @@ func Routes(businessRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 
 	businessRouter.PATCH("subscription_product/description", setProductDescriptionHandler(sqlDB))
 	businessRouter.PATCH("subscription_product/subscription_pricing", setSubProductPricingHandler(sqlDB))
-	businessRouter.PATCH("subscription_product/subscription_usage", setSubProductUsageHandler(sqlDB))
+
 	
 	// businessRouter.PATCH("subscription_product/category", createSubProductHandler(sqlDB, s3Sess))
 }
@@ -75,9 +76,9 @@ func getBusinessHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		subscribers, err := getBusinessStats(sqlDB, *businessId)
+		stats, err := getBusinessStats(sqlDB, *businessId)
 		if err != nil && err != sql.ErrNoRows {
-			log.Println("Failed to get biz subscribers", err)
+			log.Println("Failed to get business stats", err)
 			c.JSON(http.StatusBadGateway, err)
 			return
 		}
@@ -87,7 +88,9 @@ func getBusinessHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			"individual": individual,
 			"product_categories": categories,
 			"subscription_products": subProducts,
-			"subscribers": subscribers,
+			"sub_infos": stats["sub_infos"],
+			"invoices": stats["invoices"],
+			"usage_infos": stats["usage_infos"],
 		}
 
 		c.JSON(200, resBody)

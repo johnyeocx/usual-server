@@ -45,6 +45,10 @@ type InvoiceData struct {
 	Status				string			`json:"status"`
 	Attempted			bool			`json:"attempted"`
 	ApplicationFeeAmt	JsonNullInt64	`json:"app_fee_amt"`
+
+	ProductName 		*string 			`json:"product_name"`
+	ProductID 			*int 			`json:"product_id"`
+	// SubPlan 			*string 			`json:"product_id"`
 }
 
 type ProductCategory struct {

@@ -113,6 +113,15 @@ func GetSubProductStats(
 		}
 	}
 
+	// 2. Get list of usages for product
+	usages, err := b.GetSubProductUsages(productId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
 	// 2. retrieve list of subscribers for product
 	subscribers, err := b.GetSubProductSubscribers(productId)
 	if err != nil {
@@ -132,6 +141,7 @@ func GetSubProductStats(
 	}
 
 	return map[string]interface{}{
+		"sub_usages": usages,
 		"subscribers": subscribers,
 		"invoices": invoices,
 	}, nil
@@ -208,6 +218,65 @@ func UpdateProductCategory(
 		return nil, nil
 	}
 }
+
+func UpdateProductUsage(
+	sqlDB *sql.DB,
+	businessId int,
+	subUsageId int,
+	newUsage models.SubUsage,
+) (*models.RequestError) {
+	b := db.BusinessDB{DB: sqlDB}
+
+	// 1. Business owns product
+	_, err := b.BusinessOwnsUsage(businessId, subUsageId)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+
+	err = b.UpdateSubProductUsage(businessId, subUsageId, newUsage)
+
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	return nil
+}
+
+
+func AddProductUsage(
+	sqlDB *sql.DB,
+	businessId int,
+	planId int,
+	newUsage models.SubUsage,
+) (*int, *models.RequestError) {
+	b := db.BusinessDB{DB: sqlDB}
+
+	// 1. Business owns product
+	_, err := b.BusinessOwnsPlan(businessId, planId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+
+	newId, err := b.AddSubProductUsage(businessId, planId, newUsage)
+
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	return newId, nil
+}
+
+
 
 func DeleteSubProduct(
 	sqlDB *sql.DB,

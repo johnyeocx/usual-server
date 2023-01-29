@@ -10,6 +10,8 @@ type InvoiceDB struct {
 	DB *sql.DB
 }
 
+
+
 func (i *InvoiceDB) InsertInvoice (
 	invoice *models.Invoice,
 ) (error) {

@@ -11,9 +11,13 @@ type BusinessDB struct {
 }
 
 
-func (businessDB *BusinessDB) GetBusinessByID(businessId int) (*models.Business, error) {
+// READ
+func (businessDB *BusinessDB) GetBusinessByID(
+	businessId int,
+) (*models.Business, error) {
 
-	selectStatement := `SELECT business_id, name, email, country, business_category, business_url, individual_id, stripe_id, description
+	selectStatement := `SELECT 
+	business_id, name, email, country, business_category, business_url, individual_id, stripe_id, description
 	from business WHERE business_id=$1`
 
 	var business models.Business
@@ -72,41 +76,7 @@ func (b *BusinessDB) GetBusinessStripeID(businessId int) (*string, error) {
 	}
 }
 
-func (b *BusinessDB) GetBusinessSubscribers(businessId int) (*[]models.Customer, error) {
-	stmt := `SELECT DISTINCT c.customer_id, c.name, c.email FROM
-	business as b 
-	JOIN product as p on b.business_id=p.business_id
-	JOIN subscription_plan as sp on sp.product_id=p.product_id
-	JOIN subscription as s on sp.plan_id=s.plan_id
-	JOIN customer as c on c.customer_id=s.customer_id
-	WHERE b.business_id=$1`
-
-	rows, err := b.DB.Query(stmt, businessId)
-	if err != nil {
-		return nil, err
-	}
-	
-
-	defer rows.Close()
-
-	subscribers := []models.Customer{}
-	for rows.Next() {
-		var subscriber models.Customer
-        if err := rows.Scan(
-			&subscriber.ID,
-			&subscriber.Name,
-			&subscriber.Email,
-		); err != nil {
-			continue
-        }
-		
-		subscribers = append(subscribers, subscriber)
-    }
-
-	
-	return &subscribers, nil
-}
-
+// WRITE
 func (businessDB *BusinessDB) CreateBusinessProfile(
 	id int,
 	businessCategory string, 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/johnyeocx/usual/server/api/auth"
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
@@ -28,6 +29,9 @@ func CreateCustomer(
 ) (*models.RequestError) {
 	c := db.CustomerDB{DB: sqlDB}
 
+
+
+
 	// step 1: Check if user already exists
 	verified, err := c.GetCustomerEmailVerified(email)
 	if err != nil && err != sql.ErrNoRows{
@@ -42,9 +46,12 @@ func CreateCustomer(
 		}
 	}
 
+		// 1. generate random 16 digit number
+		uuid := uuid.NewString()	
+
 	// if no rows
 	if err != nil && err == sql.ErrNoRows {
-		_, err = c.CreateCustomer(name, email, password)
+		_, err = c.CreateCustomer(name, email, password, uuid)
 		if err != nil {
 			return &models.RequestError{
 				Err: err,

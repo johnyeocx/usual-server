@@ -17,6 +17,7 @@ func (c *CustomerDB) CreateCustomer (
 	name string,
 	email string,
 	password string,
+	uuid string,
 ) (*int, error) {
 	hashedPassword, err := secure.GenerateHashFromStr(password)
 	if err != nil {
@@ -25,8 +26,8 @@ func (c *CustomerDB) CreateCustomer (
 
 	var cusId int
 	err = c.DB.QueryRow(`
-		INSERT into customer (name, email, password) VALUES ($1, $2, $3) RETURNING customer_id`,
-		name, email, hashedPassword,
+		INSERT into customer (name, email, password, uuid) VALUES ($1, $2, $3, $4) RETURNING customer_id`,
+		name, email, hashedPassword, uuid,
 	).Scan(&cusId)
 
 	if err != nil {

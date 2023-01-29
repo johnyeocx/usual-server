@@ -18,9 +18,11 @@ import (
 func Routes(subProductRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
 	subProductRouter.POST("/create", createSubProductHandler(sqlDB, s3Sess))
 	subProductRouter.POST("/product_stats", getSubProductStatsHandler(sqlDB))
+	subProductRouter.POST("/usage", addProductUsageHandler(sqlDB))
 
 	subProductRouter.PATCH("/name", updateProductNameHandler(sqlDB))
 	subProductRouter.PATCH("/category", updateProductCategoryHandler(sqlDB))
+	subProductRouter.PATCH("/usage", updateProductUsageHandler(sqlDB))
 
 
 	subProductRouter.DELETE("/:productId", deleteSubProductHandler(sqlDB, s3Sess))
@@ -191,6 +193,67 @@ func updateProductCategoryHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
+func updateProductUsageHandler(sqlDB *sql.DB) gin.HandlerFunc {
+	return func  (c *gin.Context) {
+		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+		}
+
+		reqBody := struct {
+			SubUsageID		int 	`json:"sub_usage_id"`
+			SubUsage 		models.SubUsage 	`json:"sub_usage"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		reqErr := UpdateProductUsage(sqlDB, *businessId, reqBody.SubUsageID, reqBody.SubUsage)
+		
+		if reqErr != nil {
+			log.Printf("Failed to update product usage: %v\n", reqErr.Err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
+}
+
+func addProductUsageHandler(sqlDB *sql.DB) gin.HandlerFunc {
+	return func  (c *gin.Context) {
+		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+		}
+
+		reqBody := struct {
+			PlanID			int 				`json:"plan_id"`
+			SubUsage 		models.SubUsage 	`json:"sub_usage"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		newId, reqErr := AddProductUsage(sqlDB, *businessId, reqBody.PlanID, reqBody.SubUsage)
+		
+		if reqErr != nil {
+			log.Printf("Failed to update product usage: %v\n", reqErr.Err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
+
+		c.JSON(200, map[string]int {
+			"sub_usage_id": *newId,
+		})
+	}
+}
 
 func deleteSubProductHandler(sqlDB *sql.DB, s3Sess *session.Session) gin.HandlerFunc {
 	return func (c *gin.Context) {

@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/johnyeocx/usual/server/api/auth"
 	"github.com/johnyeocx/usual/server/api/business"
+	"github.com/johnyeocx/usual/server/api/usage"
 
 	"github.com/johnyeocx/usual/server/api/c/customer"
 	"github.com/johnyeocx/usual/server/api/c/subscription"
@@ -26,6 +27,7 @@ func CreateRoutes(router *gin.Engine, db *sql.DB, s3Sess *session.Session) {
 	{
 		auth.Routes(apiRoute.Group("/auth"), db, s3Sess)
 		business.Routes(apiRoute.Group("/business"), db, s3Sess)
+		usage.Routes(apiRoute.Group("/usage"), db, s3Sess)
 		stripe_webhook.Routes(apiRoute.Group("/stripe_webhook"), db, s3Sess)
 		sub_product.Routes(apiRoute.Group("/business/subscription_product"), db, s3Sess)
 
