@@ -9,13 +9,6 @@ type SubInfo struct {
 	Subscription		Subscription 	`json:"subscription"`
 }
 
-type CusUsage struct {
-	ID			int			`json:"usage_id"`
-	CusUUID		string 		`json:"customer_uuid"`
-	Created 	time.Time 	`json:"created"`
-	SubUsageID 	int 		`json:"sub_usage_id"`
-}
-
 type UsageInfo struct {
 	CusUUID 		string 		`json:"customer_uuid"`
 	CusName 		string 		`json:"customer_name"`

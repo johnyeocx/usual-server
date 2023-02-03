@@ -2,22 +2,28 @@ package c_auth
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
 
 func refreshToken(sqlDB *sql.DB, refreshToken string) (*int, error) {
-	customerId, err := secure.ParseRefreshToken(refreshToken)
+	cusId, cusType, err := secure.ParseRefreshToken(refreshToken)
+	if cusType != constants.UserTypes.Customer {
+		return nil, errors.New("unauthorized user")
+	}
+
 	if err != nil {
 		return nil, err
 	}
 	
-	customerIdInt, err := strconv.Atoi(customerId)
+	customerIdInt, err := strconv.Atoi(cusId)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +61,7 @@ func login(
 		}
 	}
 
-	accessToken, refreshToken, err := secure.GenerateTokensFromId(*cusId)
+	accessToken, refreshToken, err := secure.GenerateTokensFromId(*cusId, "customer")
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,

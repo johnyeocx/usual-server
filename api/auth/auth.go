@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/secure"
@@ -56,7 +57,12 @@ func isEmailValid(e string) bool {
 }
 
 func refreshToken(sqlDB *sql.DB, refreshToken string) (*int, error) {
-	businessId, err := secure.ParseRefreshToken(refreshToken)
+	businessId, userType, err := secure.ParseRefreshToken(refreshToken)
+
+	if userType != constants.UserTypes.Business {
+		return nil, err
+	}
+	
 	if err != nil {
 		return nil, err
 	}

@@ -32,6 +32,7 @@ func getCustomerDataHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
+
 		res, reqErr := GetCustomerData(sqlDB, *cusId)
 		if reqErr != nil {
 			log.Println("Failed to get customer: ", reqErr.Err)
@@ -115,7 +116,7 @@ func createCFromSubscribeHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		accessToken, err := secure.GenerateAccessToken(strconv.Itoa(*cId))
+		accessToken, err := secure.GenerateAccessToken(strconv.Itoa(*cId), "customer")
 		if err != nil {
 			c.JSON(http.StatusBadGateway, err)
 		}

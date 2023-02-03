@@ -1,10 +1,13 @@
 package my_stripe
 
 import (
+	"time"
+
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/stripe/stripe-go/v74"
 	"github.com/stripe/stripe-go/v74/subscription"
 )
+
 
 
 
@@ -31,6 +34,50 @@ func CreateSubscription(
 		},
 		DefaultPaymentMethod: stripe.String(cardId),
 		CollectionMethod: stripe.String("charge_automatically"),
+	};
+	params.AddExpand("latest_invoice.payment_intent")
+	
+	s, err := subscription.New(params);
+	if err != nil {
+		return nil, err
+	}
+	return &s.ID, nil
+}
+
+
+func ResumeSubscription(
+	cusId string,
+	busId string,
+	priceId string,
+	cardId string,
+	expires time.Time,
+) (*string, error) {
+	stripe.Key = stripeSecretKey()
+
+	// for each item, create subitem params
+	items := []*stripe.SubscriptionItemsParams{}
+	items = append(items, &stripe.SubscriptionItemsParams{
+		Price: stripe.String(priceId),
+	})
+
+	var billingAnchor int64
+	if (expires.After(time.Now())) {
+		billingAnchor = expires.Unix()
+	} else {
+		billingAnchor = time.Now().Unix()
+	}
+
+	params := &stripe.SubscriptionParams{
+		Customer: stripe.String(cusId),
+		Items: items,
+
+		TransferData: &stripe.SubscriptionTransferDataParams{
+			Destination: stripe.String(busId),
+		},
+		DefaultPaymentMethod: stripe.String(cardId),
+		ProrationBehavior: stripe.String("none"),
+		// TrialEnd: stripe.Int64(billingAnchor),
+		BillingCycleAnchor: stripe.Int64(billingAnchor),
 	};
 	params.AddExpand("latest_invoice.payment_intent")
 	

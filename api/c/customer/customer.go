@@ -127,7 +127,7 @@ func VerifyCustomerEmail(
 	}
 
 	// 6. Return jwt token
-	accessToken, err := secure.GenerateAccessToken(strconv.Itoa(cus.ID))
+	accessToken, err := secure.GenerateAccessToken(strconv.Itoa(cus.ID), "customer")
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
@@ -135,7 +135,7 @@ func VerifyCustomerEmail(
 		}
 	}
 
-	refreshToken, err := secure.GenerateRefreshToken(strconv.Itoa(cus.ID))
+	refreshToken, err := secure.GenerateRefreshToken(strconv.Itoa(cus.ID), "customer")
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
@@ -246,6 +246,9 @@ func GetCustomerData(
 		"invoices": invoices,
 	}, nil
 }
+
+
+
 
 func AddCusCreditCard(
 	sqlDB *sql.DB,

@@ -88,3 +88,25 @@ func GetBusinessSubProducts(sqlDB *sql.DB, businessId int) (map[string]interface
 		"product_categories": *productCats,
 	}, nil
 }
+
+func GetCSubProduct(sqlDB *sql.DB, productId int) (*models.SubscriptionProduct, error) {
+
+	b := db.BusinessDB{DB: sqlDB}
+
+	subProduct, err := b.GetCSubProduct(productId)
+	
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Get products
+	usages, err := b.GetSubProductUsages(subProduct.Product.ProductID)
+	if err != nil {
+		return nil, err
+	}
+
+	subProduct.SubPlan.Usages = usages
+
+
+	return subProduct, nil
+}

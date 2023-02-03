@@ -13,7 +13,7 @@ import (
 func updateIndividualNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -43,7 +43,7 @@ func updateIndividualNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func updateIndividualDOBHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -74,7 +74,7 @@ func updateIndividualDOBHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func updateIndividualAddressHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -115,7 +115,7 @@ func updateIndividualAddressHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func updateIndividualMobileHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}

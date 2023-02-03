@@ -98,6 +98,8 @@ func (s *BusinessDB) GetBusinessProductCategories(
 	return &categories, nil
 }
 
+
+
 func (s *BusinessDB) GetSubProductsFromIds(
 	productIds []int,
 )(*[]models.SubscriptionProduct, error) {

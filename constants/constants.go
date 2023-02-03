@@ -1,5 +1,15 @@
 package constants
 
+type userTypes struct {
+	Customer string
+	Business string
+}
+
+var UserTypes = userTypes{
+	Customer: "customer",
+	Business: "business",
+}
+
 var (
 	Countries =	[]string{
 		"Afghanistan",

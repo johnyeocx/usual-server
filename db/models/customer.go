@@ -19,20 +19,6 @@ type CardInfo struct {
 	Brand		string	`json:"brand"`
 }
 
-type Subscription struct {
-	ID 			 int 					`json:"sub_id"`
-	StripeSubID	 string 				`json:"stripe_sub_id"`
-	CustomerID	 int 					`json:"customer_id"`
-	PlanID		 int					`json:"plan_id"`
-	StartDate	 time.Time				`json:"start_date"`
-
-	// additional for customer
-	BusinessName *string 				`json:"business_name"`
-	BusinessID 	 *int 				`json:"business_id"`
-	SubProduct	 *SubscriptionProduct 	`json:"sub_product"`
-	CardID		int						`json:"card_id"`
-}
-
 
 type Invoice struct {
 	ID					int 			`json:"invoice_id"`
@@ -59,3 +45,4 @@ type ExploreResult struct {
 	Business 	Business			`json:"business"`
 	SubProduct 	SubscriptionProduct	`json:"sub_product"`
 }
+

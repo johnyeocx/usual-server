@@ -184,6 +184,88 @@ func (s *BusinessDB) GetCBusinessSubProducts(
 	return &subProducts, nil
 }
 
+func (s *BusinessDB) GetCSubProduct(
+	productId int,
+) (*models.SubscriptionProduct, error) {
+
+	stmt := `SELECT 
+	p.product_id, p.name, p.description, p.category_id, sp.plan_id, sp.currency, 
+	recurring_interval, recurring_interval_count, unit_amount, pc.title
+	
+	from product as p
+	JOIN subscription_plan as sp on p.product_id = sp.product_id
+	JOIN product_category as pc on pc.category_id=p.category_id
+	WHERE p.product_id=$1
+	`
+
+	product := models.Product{}
+	plan := models.SubscriptionPlan{}
+	plan.RecurringDuration = models.TimeFrame{}
+
+	err := s.DB.QueryRow(stmt, productId).Scan(
+		&product.ProductID,
+		&product.Name,
+		&product.Description,
+		&product.CategoryID,
+		&plan.PlanID,
+		&plan.Currency,
+		&plan.RecurringDuration.Interval,
+		&plan.RecurringDuration.IntervalCount,
+		&plan.UnitAmount,
+		&product.CatTitle,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	subProduct := models.SubscriptionProduct{
+		Product: product,
+		SubPlan: plan,
+	}
+	return &subProduct , nil
+}
+
+// func (s *BusinessDB) GetSubProductUsages(
+// 	planId int,
+// ) ([]models.SubUsage, error) {
+
+// 	stmt := `SELECT 
+// 	su.sub_usage_id, su.title, su.unlimited, su.interval, su.amount
+	
+// 	from subscription_usage as su 
+// 	JOIN subscription_plan as sp on su.plan_id=su.plan_id
+// 	WHERE su.plan_id=$1
+// 	GROUP BY su.sub_usage_id
+// 	`
+
+// 	rows, err := s.DB.Query(stmt, planId)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	defer rows.Close()
+
+// 	usages := []models.SubUsage{}
+// 	for rows.Next() {
+// 		usage := models.SubUsage{}
+// 		err := rows.Scan(
+// 			&usage.ID,
+// 			&usage.Title,
+// 			&usage.Unlimited,
+// 			&usage.Interval,
+// 			&usage.Amount,
+// 		)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		usages = append(usages, usage)
+// 	}
+
+// 	return usages , nil
+// }
+
+
 
 func (businessDB *BusinessDB) GetBusinessByIDWithSubCount(businessId int) (*models.Business, error) {
 

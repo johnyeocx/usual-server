@@ -8,8 +8,9 @@ import (
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/boombuler/barcode"
+	"github.com/boombuler/barcode/qr"
 	"github.com/johnyeocx/usual/server/external/cloud"
-	"github.com/skip2/go-qrcode"
 )
 
 var (
@@ -21,15 +22,18 @@ func GenerateSubscribeQRCode(s3Sess *session.Session, businessId int) {
 	&isi=123456789&ibi=com.usual.customer&ifl=https://usual.ltd/subscribe?business_id=%d`, businessId, businessId, businessId)
 
 	// open output file
-	qrCode, err := qrcode.New(link, qrcode.Medium)
+	// qrCode, err := qrcode.New(link, qrcode.Low)
+	qrCode, err := qr.Encode(link, qr.L, qr.Auto)
+
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	qr, _ := barcode.Scale(qrCode, 512, 512)
 	
-	image := qrCode.Image(512)
+	// qr := qrCode.Image(256)
 	buf := new(bytes.Buffer)
-	err = png.Encode(buf, image)
+	err = png.Encode(buf, qr)
 
 	if err != nil {
 		return

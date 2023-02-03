@@ -53,7 +53,7 @@ func refreshTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		accessToken, refreshToken, err := secure.GenerateTokensFromId(*cId)
+		accessToken, refreshToken, err := secure.GenerateTokensFromId(*cId, "customer")
 		if err != nil {
 			c.JSON(http.StatusBadGateway, err)
 			return

@@ -15,7 +15,7 @@ import (
 func setProductDescriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -47,7 +47,7 @@ func setProductDescriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func setSubProductPricingHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -78,46 +78,3 @@ func setSubProductPricingHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		c.JSON(200, nil)
 	}
 }
-
-// func setSubProductUsageHandler(sqlDB *sql.DB) gin.HandlerFunc {
-
-// 	return func (c *gin.Context) {
-// 		businessId, err := middleware.AuthenticateId(c, sqlDB)
-// 		if err != nil {
-// 			c.JSON(http.StatusUnauthorized, err)
-// 		}
-
-// 		reqBody := struct {
-// 			ProductID	int `json:"product_id"`
-// 			PlanID int `json:"plan_id"`
-// 			UsageUnlimited bool `json:"usage_unlimited"`
-// 			UsageDuration *models.TimeFrame `json:"usage_duration"`
-// 			UsageAmount *int `json:"usage_amount"`
-// 		}{}
-
-// 		if err := c.BindJSON(&reqBody); err != nil {
-// 			log.Printf("Failed to decode req body: %v\n", err)
-// 			c.JSON(400, err)
-// 			return
-// 		}
-
-
-// 		b := db.BusinessDB{DB: sqlDB}
-// 		err = b.SetSubProductUsage(
-// 			*businessId, 
-// 			reqBody.ProductID, 
-// 			reqBody.PlanID, 
-// 			reqBody.UsageUnlimited, 
-// 			reqBody.UsageDuration, 
-// 			reqBody.UsageAmount,
-// 		)
-		
-// 		if err != nil {
-// 			log.Printf("Failed to update product description: %v\n", err)
-// 			c.JSON(http.StatusBadGateway, err)
-// 			return
-// 		}
-
-// 		c.JSON(200, nil)
-// 	}
-// }

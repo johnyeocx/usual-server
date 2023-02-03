@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// passes.GenerateCustomerPass()
-	// return
+	
 
 	// 1. Load env file
 	err := godotenv.Load(".env")
@@ -22,8 +22,6 @@ func main() {
 		return 
 	}
 
-	// my_stripe.DeleteAllStripeProducts()
-	// return
 
 	// 2. Connect to DB
 	psqlDB := db.Connect()

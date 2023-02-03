@@ -203,7 +203,7 @@ func (c *CustomerDB) CheckCusSubscribed(cusId int, productIds []int) ( error) {
 
 func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription, error) {
 	query := `SELECT 
-	s.sub_id, s.start_date, 
+	s.sub_id, s.start_date, s.cancelled, s.expires, s.cancelled_date,
 	b.name, b.business_id, 
 	p.product_id, p.name, p.description, pc.title,
 	sp.plan_id, sp.product_id,
@@ -228,7 +228,7 @@ func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription,
 		sub.SubProduct = &models.SubscriptionProduct{}
 		if err := rows.Scan(
 			&sub.ID,
-			&sub.StartDate,
+			&sub.StartDate, &sub.Cancelled, &sub.Expires, &sub.CancelledDate,
 			&sub.BusinessName, &sub.BusinessID,
 			&sub.SubProduct.Product.ProductID, &sub.SubProduct.Product.Name, &sub.SubProduct.Product.Description, &sub.SubProduct.Product.CatTitle,
 			&sub.SubProduct.SubPlan.PlanID, &sub.SubProduct.SubPlan.ProductID,
@@ -312,6 +312,115 @@ func (c *CustomerDB) GetCustomerInvoices(cusId int) ([]models.Invoice, error) {
 	return invoices, nil
 }
 
+func (c *CustomerDB) GetTotalSpent(
+	cusId int,
+	productId int,
+) (*int, error) {
+	query := `
+	SELECT 
+	SUM(i.total)
+	FROM customer as c 
+	JOIN subscription as s on s.customer_id=c.customer_id
+	JOIN subscription_plan as sp on sp.plan_id=s.plan_id
+	JOIN product as p on p.product_id=sp.product_id
+	JOIN invoice as i ON i.stripe_price_id=sp.stripe_price_id
+	WHERE c.customer_id=$1 AND p.product_id=$2
+	`
+
+
+	var total int
+	err := c.DB.QueryRow(query, cusId, productId).Scan(&total)
+	if err != nil {
+		return nil, err
+	}
+
+	return &total, nil
+}
+
+func (c *CustomerDB) GetSubInvoices(
+	cusId int,
+	productId int, 
+	limit int,
+) ([]models.Invoice, error) {
+	query := fmt.Sprintf(`
+	SELECT 
+	i.invoice_id, i.paid, i.attempted, i.status, i.total, i.created, i.invoice_url, 
+	s.sub_id, s.plan_id, s.start_date, 
+	cc.card_id, cc.brand, cc.last4
+	FROM customer as c 
+	JOIN subscription as s on s.customer_id=c.customer_id
+	JOIN subscription_plan as sp on sp.plan_id=s.plan_id
+	JOIN product as p on p.product_id=sp.product_id
+	JOIN invoice as i ON i.stripe_prod_id=p.stripe_product_id
+	JOIN customer_card as cc on cc.card_id=s.card_id
+	WHERE c.customer_id=$1 AND p.product_id=$2
+	ORDER BY i.created DESC
+	LIMIT %d
+	`, limit)
+
+
+	rows, err := c.DB.Query(query, cusId, productId)
+	if err != nil {
+		return nil, err
+	}
+
+	invoices := []models.Invoice{}
+	for rows.Next() {
+		var in models.Invoice
+		in.Subscription = &models.Subscription{}
+		in.CardInfo = &models.CardInfo{}
+		if err := rows.Scan(
+			&in.ID, &in.Paid, &in.Attempted, &in.Status, &in.Total, &in.Created, &in.InvoiceURL,
+			&in.Subscription.ID, &in.Subscription.PlanID, &in.Subscription.StartDate,
+			&in.CardInfo.ID, &in.CardInfo.Brand, &in.CardInfo.Last4,
+		); err != nil {
+			return nil, err
+		}
+		invoices = append(invoices, in)
+	}
+
+	return invoices, nil
+}
+
+func (c *CustomerDB) GetSubscriptionUsages(
+	cusId int,
+	productId int, 
+	limit int,
+) ([]models.CusUsage, error) {
+	query := fmt.Sprintf(`
+	SELECT cu.usage_id, cu.created, su.title, p.product_id, p."name"
+	FROM customer as c 
+	JOIN subscription as s on s.customer_id=c.customer_id
+	JOIN customer_usage as cu on cu.customer_uuid=c.uuid
+	JOIN subscription_plan as sp on sp.plan_id=s.plan_id
+	JOIN subscription_usage as su on su.plan_id=sp.plan_id
+	JOIN product as p on p.product_id=sp.product_id
+	WHERE c.customer_id=$1 AND p.product_id=$2
+	ORDER BY cu.created DESC
+	LIMIT %d
+	`, limit)
+
+
+	rows, err := c.DB.Query(query, cusId, productId)
+	if err != nil {
+		return nil, err
+	}
+
+	usages := []models.CusUsage{}
+	for rows.Next() {
+		var usage models.CusUsage
+		if err := rows.Scan(
+			&usage.ID, &usage.Created, 
+			&usage.SubUsageTitle, &usage.ProductID, &usage.ProductName,
+		); err != nil {
+			return nil, err
+		}
+		usages = append(usages, usage)
+	}
+
+	return usages, nil
+}
+
 func (c *CustomerDB) AddNewCustomerCard(cusId int, cardInfo models.CardInfo) (*int, error) {
 	query := `
 	INSERT into customer_card (last4, stripe_id, customer_id, brand) VALUES ($1, $2, $3, $4) RETURNING card_id
@@ -341,4 +450,21 @@ func (c *CustomerDB) UpdateCusDefaultCard(cusId int, cardId int) (error) {
 		cusId,
 	)
 	return err
+}
+
+func (c *CustomerDB) GetCusCard(cusId int, cardId int) (*models.CardInfo, error) {
+	query := `
+		SELECT last4, stripe_id, brand FROM customer_card WHERE card_id=$1 AND customer_id=$2
+	`
+	
+	card := models.CardInfo{}
+	err := c.DB.QueryRow(query, 
+		cardId,
+		cusId,
+	).Scan(&card.Last4, &card.StripeID, &card.Brand)
+
+	if err != nil {
+		return nil, err
+	}
+	return &card, nil
 }

@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,6 +11,47 @@ import (
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/my_stripe"
 )
+
+
+func GetSubscriptionData(
+	sqlDB *sql.DB,
+	cusId int,
+	productId int,
+) (map[string]interface{}, *models.RequestError) {
+
+	c := db.CustomerDB{DB: sqlDB}
+	total, err := c.GetTotalSpent(cusId, productId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// 1. Get Invoices
+	invoices, err := c.GetSubInvoices(cusId, productId, 20)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// 2. Get Usages
+	usages, err := c.GetSubscriptionUsages(cusId, productId, 20)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	return map[string]interface{}{
+		"total": total,
+		"invoices": invoices,
+		"usages": usages,
+	}, nil
+}
 
 
 func CreateSubscription(
@@ -95,48 +137,163 @@ func CreateSubscription(
 	return returnedSubs, nil
 }
 
-func CancelSubscription(
-	sqlDB *sql.DB,
-	cusId int,
+func ResumeSubscription(
+	sqlDB *sql.DB, 
+	customerId int,
+	cardId int,
 	subId int,
-) (*models.RequestError) {
+) ( *models.RequestError) {
+
+
+	c := db.CustomerDB{DB: sqlDB}
 	s := db.SubscriptionDB{DB: sqlDB}
 
-	// 1. check if cus owns sub
-	sub, err := s.CusOwnsSub(cusId, subId)
-	if err != nil && err != sql.ErrNoRows {
+	data, err := s.GetCusResumeSubData(customerId, subId)
+	if err != nil {
+		return  &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	
+	plan := data["plan"].(models.SubscriptionPlan)
+	sub := data["subscription"].(models.Subscription)
+
+	if !sub.Cancelled {
+		return &models.RequestError{
+			Err: errors.New("subscription is not cancelled so can't resume"),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+
+	var cardStripeId string
+
+	if sub.CardID != cardId {
+		card, err := c.GetCusCard(customerId, cardId)
+		if err != nil {
+			return &models.RequestError{
+				Err: err,
+				StatusCode: http.StatusUnauthorized,
+			}
+		}
+		cardStripeId = card.StripeID
+	} else {
+		cardStripeId = data["stripe_card_id"].(string)
+	}
+
+	cusStripeId := data["stripe_cus_id"].(string)
+
+	busStripeId := data["stripe_bus_id"].(string)
+
+
+	stripeSubId, err := my_stripe.ResumeSubscription(
+		cusStripeId,
+		busStripeId,
+		*plan.StripePriceID,
+		cardStripeId,
+		sub.Expires.Time,
+	)
+
+
+	if err != nil {
 		return &models.RequestError{
 			Err: err,
 			StatusCode: http.StatusBadGateway,
 		}
 	}
+	fmt.Println(*stripeSubId)
 
-	if err == sql.ErrNoRows {
+	err = s.ResumeSubscription(subId, cardId, *stripeSubId)
+	if err != nil {
 		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	return nil
+}
+
+
+func CancelSubscription(
+	sqlDB *sql.DB,
+	cusId int,
+	subId int,
+) (*time.Time, *models.RequestError) {
+	s := db.SubscriptionDB{DB: sqlDB}
+
+	// 1. check if cus owns sub
+	fmt.Println(subId)
+	fmt.Println("1. checking if cus owns sub")
+	sub, plan, lastInvoice, err := s.CusOwnsSub(cusId, subId)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	
+	if err == sql.ErrNoRows {
+		return nil, &models.RequestError{
 			Err: err,
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
+	fmt.Println("1. deleting sub from stripe")
+
 	// 2. delete from stripe
 	err = my_stripe.CancelSubscription(sub.StripeSubID)
 	if err != nil {
-		return &models.RequestError{
+		return nil, &models.RequestError{
 			Err: err,
 			StatusCode: http.StatusBadGateway,
 		}
 	}
 
-	// 3. delete from sql
-	err = s.DeleteSubscription(subId)
+	// 3. Set sql to cancelled and determine expired date
+	recurring := plan.RecurringDuration
+	expires := GetNextBillingDate(recurring, lastInvoice.Created)
+
+	// // 3. update sql
+	err = s.CancelSubscription(subId, expires)
 	if err != nil {
-		return &models.RequestError{
+		return nil, &models.RequestError{
 			Err: err,
 			StatusCode: http.StatusBadGateway,
 		}
 	}
 
-	fmt.Println("Completed")
+	fmt.Println("Made it here:", expires)
 
-	return nil
+	return &expires, nil
+}
+
+func GetNextBillingDate(
+	recurring models.TimeFrame, 
+	lastInvoiceDate time.Time,
+
+) (time.Time) {
+	interval := recurring.Interval.String
+	intervalCount := recurring.IntervalCount.Int16
+	
+	if recurring.Interval.String == "day" {
+		return lastInvoiceDate.Add(time.Hour * 24 * time.Duration(intervalCount))
+	} else if interval == "week" {
+		return lastInvoiceDate.Add(time.Hour * 24 * 7 * time.Duration(intervalCount))
+	} else if interval == "month" {
+		// get next month
+		next := lastInvoiceDate.AddDate(0, int(intervalCount), 0)
+		if next.Month() - lastInvoiceDate.Month() > time.Month(intervalCount) {
+			next = EndOfMonth(next.AddDate(0, -1, 0))
+		}
+
+		return next
+	} else {
+		return lastInvoiceDate.AddDate(1, 0, 0)
+	}
+}
+
+func EndOfMonth(date time.Time) (time.Time) {
+    return date.AddDate(0, 1, -date.Day())
 }

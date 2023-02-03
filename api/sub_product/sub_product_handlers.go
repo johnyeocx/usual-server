@@ -31,7 +31,7 @@ func Routes(subProductRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Se
 
 func createSubProductHandler(sqlDB *sql.DB, s3Sess *session.Session)  gin.HandlerFunc {
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -96,7 +96,7 @@ func createSubProductHandler(sqlDB *sql.DB, s3Sess *session.Session)  gin.Handle
 func getSubProductStatsHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, errors.New("failed to get business id"))
 			return
@@ -129,7 +129,7 @@ func getSubProductStatsHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func updateProductNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -158,7 +158,7 @@ func updateProductNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 func updateProductCategoryHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func  (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -195,7 +195,7 @@ func updateProductCategoryHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 func updateProductUsageHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func  (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -225,7 +225,7 @@ func updateProductUsageHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 func addProductUsageHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func  (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -257,7 +257,7 @@ func addProductUsageHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 func deleteSubProductHandler(sqlDB *sql.DB, s3Sess *session.Session) gin.HandlerFunc {
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 			return

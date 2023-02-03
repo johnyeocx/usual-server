@@ -41,7 +41,7 @@ func Routes(businessRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 
 func getBusinessHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
@@ -99,7 +99,7 @@ func getBusinessHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 func setBusinessProfileHandler(sqlDB *sql.DB, s3Sess *session.Session)  gin.HandlerFunc {
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 			return
@@ -146,7 +146,7 @@ func setBusinessProfileHandler(sqlDB *sql.DB, s3Sess *session.Session)  gin.Hand
 func updateBusinessNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -175,7 +175,7 @@ func updateBusinessNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func updateBusinessEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -203,7 +203,7 @@ func updateBusinessEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 func updateBusinessDescriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -233,7 +233,7 @@ func updateBusinessDescriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func updateBusinessCategoryHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}
@@ -262,7 +262,7 @@ func updateBusinessCategoryHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func updateBusinessUrlHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 		}

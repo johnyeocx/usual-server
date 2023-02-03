@@ -15,11 +15,12 @@ var (
 	refreshTokenExpiry = time.Hour * 500
 )
 
-func GenerateAccessToken(userID string) (string, error) {
+func GenerateAccessToken(userID string, userType string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 	secretKey := os.Getenv("JWT_ACCESS_SECRET")
 	claims := token.Claims.(jwt.MapClaims)
 	claims["user_id"] = userID
+	claims["user_type"] = userType
 
 	claims["exp"] = time.Now().Add(accessTokenExpiry).Unix()
 	tokenString, err := token.SignedString([]byte(secretKey))
@@ -32,12 +33,16 @@ func GenerateAccessToken(userID string) (string, error) {
 	return tokenString, nil
 }
 
-func GenerateRefreshToken(userID string) (string, error) {
+func GenerateRefreshToken(userID string, userType string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 	secretKey := os.Getenv("JWT_REFRESH_SECRET")
 
 	claims := token.Claims.(jwt.MapClaims)
 	claims["user_id"] = userID
+
+	claims["user_type"] = userType
+
+
 	claims["exp"] = time.Now().Add(refreshTokenExpiry).Unix()
 	tokenString, err := token.SignedString([]byte(secretKey))
 
@@ -48,7 +53,7 @@ func GenerateRefreshToken(userID string) (string, error) {
 	return tokenString, nil
 }
 
-func ParseAccessToken(tokenStr string) (string, error) {
+func ParseAccessToken(tokenStr string) (string, string, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, isvalid := token.Method.(*jwt.SigningMethodHMAC); !isvalid {
 			return nil, fmt.Errorf("invalid token: %v", token.Header["alg"])
@@ -59,15 +64,16 @@ func ParseAccessToken(tokenStr string) (string, error) {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		userId := claims["user_id"].(string)
-		return userId, nil
+		userType := claims["user_type"].(string)
+		return userId, userType, nil
 		
 	} else {
 		log.Print("Err", err)
-		return "", err
+		return "", "", err
 	}
 }
 
-func ParseRefreshToken(tokenStr string) (string, error) {
+func ParseRefreshToken(tokenStr string) (string, string, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, isvalid := token.Method.(*jwt.SigningMethodHMAC); !isvalid {
 			return nil, fmt.Errorf("invalid token: %v", token.Header["alg"])
@@ -78,20 +84,21 @@ func ParseRefreshToken(tokenStr string) (string, error) {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		userID := claims["user_id"].(string)
-		return userID, nil
+		userType := claims["user_type"].(string)
+		return userID, userType, nil
 	} else {
 		log.Print("Err", err)
-		return "", err
+		return "", "", err
 	}
 }
 
-func GenerateTokensFromId(id int) (*string, *string, error) {
-	accessToken, err := GenerateAccessToken(strconv.Itoa(id))
+func GenerateTokensFromId(id int, userType string) (*string, *string, error) {
+	accessToken, err := GenerateAccessToken(strconv.Itoa(id), userType)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	refreshToken, err := GenerateRefreshToken(strconv.Itoa(id))
+	refreshToken, err := GenerateRefreshToken(strconv.Itoa(id), userType)
 	if err != nil {
 		return nil, nil, err
 	}

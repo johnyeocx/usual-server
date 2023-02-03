@@ -77,7 +77,7 @@ func createBusinessHandler(sqlDB *sql.DB, s3Sess *session.Session) gin.HandlerFu
 
 func validateTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
-		_, err := middleware.AuthenticateId(c, sqlDB)
+		_, err := middleware.AuthenticateBId(c, sqlDB)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
 			return
@@ -86,6 +86,8 @@ func validateTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		c.JSON(200, nil)
 	}
 }
+
+
 
 func refreshTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
@@ -159,13 +161,13 @@ func verifyEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 
 		// 3. Return jwt token
-		accessToken, err := secure.GenerateAccessToken(strconv.Itoa(business.ID))
+		accessToken, err := secure.GenerateAccessToken(strconv.Itoa(business.ID), "business")
 		if err != nil {
 			c.JSON(500, err)
 			return
 		}
 
-		refreshToken, err := secure.GenerateRefreshToken(strconv.Itoa(business.ID))
+		refreshToken, err := secure.GenerateRefreshToken(strconv.Itoa(business.ID), "business")
 		if err != nil {
 			c.JSON(500, err)
 			return
@@ -219,12 +221,12 @@ func loginHandler(sqlDB *sql.DB) gin.HandlerFunc {
 }
 
 func generateTokens(businessId int) (*string, *string, error) {
-	accessToken, err := secure.GenerateAccessToken(strconv.Itoa(businessId))
+	accessToken, err := secure.GenerateAccessToken(strconv.Itoa(businessId), "business")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	refreshToken, err := secure.GenerateRefreshToken(strconv.Itoa(businessId))
+	refreshToken, err := secure.GenerateRefreshToken(strconv.Itoa(businessId), "business")
 	if err != nil {
 		return nil, nil, err
 	}

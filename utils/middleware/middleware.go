@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/secure"
@@ -17,12 +18,17 @@ import (
 type contextKey struct {
 	key string
 }
-var UserCtxKey = contextKey{key: "user_id"}
+var UserCtxKey = contextKey{
+	key: "user_id"}
 
+var UserTypeCtxKey = contextKey{
+	key: "user_type"}
+	
 func AuthMiddleware() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		
+
 
 		const BEARER_SCHEMA = "Bearer "
 		authHeader := c.GetHeader("Authorization")
@@ -33,7 +39,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		userId, err := secure.ParseAccessToken(authHeader[len(BEARER_SCHEMA):])
+		userId, userType, err := secure.ParseAccessToken(authHeader[len(BEARER_SCHEMA):])
 		
 		if err != nil {
 			log.Printf("Could not parse access token: %s", err.Error())
@@ -48,11 +54,12 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		c.Set(UserCtxKey.key, userId)
+		c.Set(UserTypeCtxKey.key, userType)
 		c.Next()
 	}
 }
 
-func UserCtx(c *gin.Context) (interface{}, error) {
+func UserCtx(c *gin.Context) (interface{}, interface{}, error) {
 	userID, exists := c.Get(UserCtxKey.key)
 
 	if !exists {
@@ -60,18 +67,31 @@ func UserCtx(c *gin.Context) (interface{}, error) {
 			StatusCode: http.StatusUnauthorized, 
 			Err: errors.New("user id not found in context"),
 		}
-		return nil, err.Err
+		return nil, nil, err.Err
 	}
-	return userID, nil
+
+	userType, exists := c.Get(UserTypeCtxKey.key)
+
+	if !exists {
+		err := models.RequestError{
+			StatusCode: http.StatusUnauthorized, 
+			Err: errors.New("user type not found in context"),
+		}
+		return nil, nil, err.Err
+	}
+	return userID, userType,  nil
 }
 
+func AuthenticateBId(c *gin.Context, sqlDB *sql.DB) (*int, error) {
 
-func AuthenticateId(c *gin.Context, sqlDB *sql.DB) (*int, error) {
-
-	businessId, err := UserCtx(c)
+	businessId, userType, err := UserCtx(c)
 	
 	if err != nil {
 		return nil, err
+	}
+
+	if userType != constants.UserTypes.Business {
+		return nil, errors.New("wrong type token")
 	}
 
 	businessIdInt, err := strconv.Atoi(businessId.(string))
@@ -88,10 +108,15 @@ func AuthenticateId(c *gin.Context, sqlDB *sql.DB) (*int, error) {
 
 func AuthenticateCId(c *gin.Context, sqlDB *sql.DB) (*int, error) {
 
-	customerId, err := UserCtx(c)
+	customerId, cusType, err := UserCtx(c)
+
 	
 	if err != nil {
 		return nil, err
+	}
+
+	if cusType != constants.UserTypes.Customer {
+		return nil, errors.New("wrong type token")
 	}
 
 	customerIdInt, err := strconv.Atoi(customerId.(string))

@@ -18,7 +18,7 @@ func Routes(usageRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session
 
 func scanCusQRHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
@@ -48,7 +48,7 @@ func scanCusQRHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 func insertCusUsageHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
-		businessId, err := middleware.AuthenticateId(c, sqlDB)
+		businessId, err := middleware.AuthenticateBId(c, sqlDB)
 
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
