@@ -2,11 +2,13 @@ package c_auth
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
+	"github.com/johnyeocx/usual/server/external/cloud"
 	"github.com/johnyeocx/usual/server/utils/middleware"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
@@ -14,11 +16,37 @@ import (
 // AUTH ROUTES
 func Routes(authRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
 	
+
+	authRouter.GET("/pkpass", getPkPassPresignedUrlHandler(sqlDB, s3Sess))
+
+
 	authRouter.POST("/validate", validateTokenHandler(sqlDB))
 	authRouter.POST("/refresh_token", refreshTokenHandler(sqlDB))
 	authRouter.POST("/login", loginHandler(sqlDB))
 	// authRouter.POST("/verify_msg_otp", verifyRegisterOTPHandler(conn))
 	// authRouter.POST("/register_user_details", registerUserDetailsHandler(conn))
+}
+
+func getPkPassPresignedUrlHandler(sqlDB *sql.DB, s3sess *session.Session) gin.HandlerFunc {
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+			return
+		}
+
+		key := fmt.Sprintf("customer/pkpass/%d.pkpass", *cusId)
+		fmt.Println("KEY:", key)
+
+		url, err := cloud.GetObjectPresignedURL(s3sess, key)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+
+		c.JSON(200, url)
+	}
 }
 
 func validateTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {

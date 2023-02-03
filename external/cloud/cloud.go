@@ -64,6 +64,23 @@ func GetImageUploadUrl(sess *session.Session, key string) (string, error) {
 	return str, nil
 }
 
+func GetObjectPresignedURL(sess *session.Session, key string) (string, error) {
+	svc := s3.New(sess)
+	var bucket = os.Getenv("BUCKET_NAME")
+
+	req, _ := svc.GetObjectRequest(&s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+
+	str, err := req.Presign(10 * time.Minute)
+	if err != nil {
+		return "can't sign", err
+	}
+
+	return str, nil
+}
+
 func UploadImage(
 	sess *session.Session, 
 	image []byte, 

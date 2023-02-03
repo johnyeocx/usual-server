@@ -36,19 +36,13 @@ func GenerateCustomerPass() {
 				MessageEncoding: "utf-8",
 			},
 		},
+		BackgroundColor: "#ffffff",
+		ForegroundColor: "#000000",
 	}
 
-	// iconBytes := openImage("./passes/membership/icon.png")
-	// icon2Bytes := openImage("./passes/membership/icon@2x.png")
-	// thumbnailBytes := openImage("./passes/membership/thumbnail.png")
-	// stripBytes := openImage("./passes/membership/strip.png")
 
 	template := passkit.NewInMemoryPassTemplate()
 	template.AddAllFiles("./passes/membership")
-	// template.AddFileBytes(passkit.BundleIcon, iconBytes)
-	// template.AddFileBytes(passkit.BundleIconRetina, icon2Bytes)
-	// template.AddFileBytes(passkit.BundleThumbnail, thumbnailBytes)
-	// template.AddFileBytes(passkit.BundleStrip, stripBytes)
 
 	signer := passkit.NewMemoryBasedSigner()
 	signInfo, err := passkit.LoadSigningInformationFromFiles("./passes/private.p12", "never_know_your_next_move", "./passes/pass.cer")
