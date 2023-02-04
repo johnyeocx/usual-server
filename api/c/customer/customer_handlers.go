@@ -17,7 +17,7 @@ func Routes(customerRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 	customerRouter.GET("data", getCustomerDataHandler(sqlDB))
 
 	customerRouter.POST("create", createCustomerHandler(sqlDB))
-	customerRouter.POST("verify_email", verifyCustomerEmailHandler(sqlDB))
+	customerRouter.POST("verify_email", verifyCustomerEmailHandler(sqlDB, s3Sess))
 	customerRouter.POST("create_from_subscribe", createCFromSubscribeHandler(sqlDB))
 	
 	customerRouter.POST("add_card", addCustomerCardHandler(sqlDB))
@@ -69,7 +69,7 @@ func createCustomerHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
-func verifyCustomerEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
+func verifyCustomerEmailHandler(sqlDB *sql.DB, s3Sess *session.Session) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		// 1. Get user email and search if exists in db
@@ -84,7 +84,7 @@ func verifyCustomerEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 		
 		// 2. Verify email
-		res, reqErr := VerifyCustomerEmail(sqlDB, reqBody.Email, reqBody.OTP)
+		res, reqErr := VerifyCustomerEmail(s3Sess, sqlDB, reqBody.Email, reqBody.OTP)
 		if reqErr != nil {
 			log.Println(reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)

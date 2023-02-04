@@ -9,6 +9,7 @@ type Customer struct {
 	Address 			*Address 		`json:"address"`
 	StripeID 			string 			`json:"stripe_id"`
 	DefaultCardID	 	JsonNullInt16	`json:"default_card_id"`
+	Uuid 				string 			`json:"uuid"`
 }
 
 type CardInfo struct {

@@ -16,6 +16,31 @@ import (
 var (
 )
 
+func GenerateCusQR(
+	s3Sess *session.Session, 
+	cusUuid string,
+	cusId int,
+) (error) {
+	data := cusUuid
+	qrCode, err := qr.Encode(data, qr.L, qr.Auto)
+
+	if err != nil {
+		return err
+	}
+	qr, _ := barcode.Scale(qrCode, 512, 512)
+	
+	// qr := qrCode.Image(256)
+	buf := new(bytes.Buffer)
+	err = png.Encode(buf, qr)
+
+	if err != nil {
+		return err
+	}
+
+	err = cloud.PutObject(s3Sess, buf.Bytes(), "image/png", "/customer/profile_qr/" + strconv.Itoa(cusId))
+	return err
+}
+
 func GenerateSubscribeQRCode(s3Sess *session.Session, businessId int) {
 	link := fmt.Sprintf(`https://usual.page.link/?link=https://usual.ltd/subscribe?business_id=%d
 	&apn=com.usual.customer&afl=https://www.usual.ltd/subscribe?business_id=%d
@@ -39,5 +64,5 @@ func GenerateSubscribeQRCode(s3Sess *session.Session, businessId int) {
 		return
 	}
 
-	cloud.UploadImage(s3Sess, buf.Bytes(), "image/png", "/business/profile_qr/" + strconv.Itoa(businessId))
+	cloud.PutObject(s3Sess, buf.Bytes(), "image/png", "/business/profile_qr/" + strconv.Itoa(businessId))
 }

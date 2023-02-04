@@ -64,7 +64,7 @@ func GetImageUploadUrl(sess *session.Session, key string) (string, error) {
 	return str, nil
 }
 
-func GetObjectPresignedURL(sess *session.Session, key string) (string, error) {
+func GetObjectPresignedURL(sess *session.Session, key string, time time.Duration) (string, error) {
 	svc := s3.New(sess)
 	var bucket = os.Getenv("BUCKET_NAME")
 
@@ -73,7 +73,7 @@ func GetObjectPresignedURL(sess *session.Session, key string) (string, error) {
 		Key:    aws.String(key),
 	})
 
-	str, err := req.Presign(10 * time.Minute)
+	str, err := req.Presign(time)
 	if err != nil {
 		return "can't sign", err
 	}
@@ -81,7 +81,7 @@ func GetObjectPresignedURL(sess *session.Session, key string) (string, error) {
 	return str, nil
 }
 
-func UploadImage(
+func PutObject(
 	sess *session.Session, 
 	image []byte, 
 	contentType string,

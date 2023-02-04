@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,7 @@ func Routes(authRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session)
 	
 
 	authRouter.GET("/pkpass", getPkPassPresignedUrlHandler(sqlDB, s3Sess))
+	authRouter.GET("/qr", getQRPresignedUrlHandler(sqlDB, s3Sess))
 
 
 	authRouter.POST("/validate", validateTokenHandler(sqlDB))
@@ -39,7 +41,28 @@ func getPkPassPresignedUrlHandler(sqlDB *sql.DB, s3sess *session.Session) gin.Ha
 		key := fmt.Sprintf("customer/pkpass/%d.pkpass", *cusId)
 		fmt.Println("KEY:", key)
 
-		url, err := cloud.GetObjectPresignedURL(s3sess, key)
+		url, err := cloud.GetObjectPresignedURL(s3sess, key, time.Minute)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+
+		c.JSON(200, url)
+	}
+}
+
+func getQRPresignedUrlHandler(sqlDB *sql.DB, s3sess *session.Session) gin.HandlerFunc {
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+			return
+		}
+
+		key := fmt.Sprintf("customer/profile_qr/%d", *cusId)
+
+		url, err := cloud.GetObjectPresignedURL(s3sess, key, time.Hour)
 		if err != nil {
 			c.JSON(http.StatusBadGateway, err)
 			return

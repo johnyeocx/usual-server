@@ -100,12 +100,13 @@ func (c *CustomerDB) GetCustomerByEmail (
 ) (*models.Customer, error) {
 	var cus models.Customer 
 	err := c.DB.QueryRow(`SELECT 
-		customer_id, name, email
+		customer_id, name, email, uuid
 		FROM customer WHERE email=$1`, 
 	email).Scan(
 		&cus.ID,
 		&cus.Name,
 		&cus.Email,
+		&cus.Uuid,
 	)
 
 	if err != nil {

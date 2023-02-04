@@ -8,12 +8,14 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/google/uuid"
 	"github.com/johnyeocx/usual/server/api/auth"
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/media"
 	"github.com/johnyeocx/usual/server/external/my_stripe"
+	"github.com/johnyeocx/usual/server/passes"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
 
@@ -78,6 +80,7 @@ func CreateCustomer(
 }
 
 func VerifyCustomerEmail(
+	s3sess *session.Session,
 	sqlDB *sql.DB,
 	email string,
 	otp string,
@@ -126,7 +129,23 @@ func VerifyCustomerEmail(
 		}
 	}
 
-	// 6. Return jwt token
+	// 6. Add pkpass and image to cloud
+	err = passes.GenerateCustomerPass(s3sess, cus.Name, cus.Uuid, cus.ID)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	err = media.GenerateCusQR(s3sess, cus.Uuid, cus.ID)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// 7. Return jwt token
 	accessToken, err := secure.GenerateAccessToken(strconv.Itoa(cus.ID), "customer")
 	if err != nil {
 		return nil, &models.RequestError{
