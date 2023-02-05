@@ -177,7 +177,14 @@ func updateCusAddress(
 			StatusCode: http.StatusBadGateway,
 		}
 	}
-	
+
+	err = c.UpdateCusAddress(cusId, address)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
 	return nil
 }
 
