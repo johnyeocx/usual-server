@@ -108,3 +108,47 @@ func AddNewCustomerCard(cusId string, card *models.CreditCard) (*stripe.PaymentM
 
 	return pm, nil
 }
+
+func UpdateCusName(cusId string, name string) (error) {
+	stripe.Key = stripeSecretKey()
+
+	// 2. CREATE CUSTOMER
+	params := &stripe.CustomerParams{
+		Name: stripe.String(name),
+	}
+
+	_, err := customer.Update(cusId, params)
+	return err
+}
+
+
+func UpdateCusEmail(cusId string, email string) (error) {
+	stripe.Key = stripeSecretKey()
+
+	// 2. CREATE CUSTOMER
+	params := &stripe.CustomerParams{
+		Email: stripe.String(email),
+	}
+
+	_, err := customer.Update(cusId, params)
+	return err
+}
+
+func UpdateCusAddress(cusId string, address models.Address) (error) {
+	stripe.Key = stripeSecretKey()
+
+	// 2. CREATE CUSTOMER
+	params := &stripe.CustomerParams{
+		Address: &stripe.AddressParams{
+			Line1: stripe.String(address.Line1),
+			Line2: stripe.String(address.Line2),
+			PostalCode: stripe.String(address.PostalCode),
+			City: stripe.String(address.City),
+			Country: address.Country,
+		},
+	}
+
+	_, err := customer.Update(cusId, params)
+	return err
+}
+

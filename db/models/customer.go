@@ -6,7 +6,7 @@ type Customer struct {
 	ID 					int 			`json:"customer_id"`
 	Name				string 			`json:"name"`
 	Email 				string 			`json:"email"`
-	Address 			*Address 		`json:"address"`
+	Address 			*CusAddress 	`json:"address"`
 	StripeID 			string 			`json:"stripe_id"`
 	DefaultCardID	 	JsonNullInt16	`json:"default_card_id"`
 	Uuid 				string 			`json:"uuid"`
@@ -47,3 +47,11 @@ type ExploreResult struct {
 	SubProduct 	SubscriptionProduct	`json:"sub_product"`
 }
 
+
+type CusAddress struct {
+	Line1 			JsonNullString 		`json:"line1"`
+	Line2 			JsonNullString 		`json:"line2"`
+	PostalCode 		JsonNullString 		`json:"postal_code"`
+	City 			JsonNullString 		`json:"city"`
+	Country 		JsonNullString 		`json:"country"`
+}

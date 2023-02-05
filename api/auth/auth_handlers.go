@@ -137,7 +137,7 @@ func verifyEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 		
 		// 2. Verify email
-		reqErr := VerifyEmailOTP(sqlDB, reqBody.Email, reqBody.OTP, "register")
+		_, reqErr := VerifyEmailOTP(sqlDB, reqBody.Email, reqBody.OTP, "register")
 		if reqErr != nil {
 			log.Println(reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)

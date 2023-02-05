@@ -70,22 +70,22 @@ func VerifyEmailOTP(
     email string,
     otp string,
     otpType string,
-) (*models.RequestError) {
+) (*models.EmailOTP, *models.RequestError) {
 
     // 1. Find matching verification in sql
     authDB := db.AuthDB{DB: sqlDB}
-    hashedOtp, err := authDB.GetEmailVerification(email, otpType)
+    emailOtp, err := authDB.GetEmailVerification(email, otpType)
 
     if err != nil {
-        return &models.RequestError{
+        return nil, &models.RequestError{
             Err: fmt.Errorf("failed to get verification from db\n%v", err),
             StatusCode: http.StatusBadRequest,
         }
     }
 
     // 2. Check otp match
-    if !secure.StringMatchesHash(otp, *hashedOtp) {
-        return &models.RequestError{
+    if !secure.StringMatchesHash(otp, emailOtp.HashedOTP) {
+        return nil, &models.RequestError{
             Err: fmt.Errorf("invalid otp provided\n%v", err),
             StatusCode: http.StatusUnauthorized,
         };
@@ -93,13 +93,13 @@ func VerifyEmailOTP(
 
     // 3. Delete verification code from table
     if err := authDB.DeleteEmailVerification(email, otpType); err != nil {
-        return &models.RequestError{
+        return nil, &models.RequestError{
             Err: fmt.Errorf("failed to delete email verification\n%v", err),
             StatusCode: http.StatusBadGateway,
         };
     }
 
-    return  nil  
+    return emailOtp, nil  
 }
 
 
@@ -111,7 +111,7 @@ func VerifyCustomerEmailOTP(
 
     // 1. Find matching verification in sql
     authDB := db.AuthDB{DB: sqlDB}
-    hashedOtp, err := authDB.GetEmailVerification(email, "register")
+    emailOtp, err := authDB.GetEmailVerification(email, "register")
 
     if err != nil {
         return nil, &models.RequestError{
@@ -121,7 +121,7 @@ func VerifyCustomerEmailOTP(
     }
 
     // 2. Check otp match
-    if !secure.StringMatchesHash(otp, *hashedOtp) {
+    if !secure.StringMatchesHash(otp, emailOtp.HashedOTP) {
         return nil, &models.RequestError{
             Err: fmt.Errorf("invalid otp provided\n%v", err),
             StatusCode: http.StatusUnauthorized,

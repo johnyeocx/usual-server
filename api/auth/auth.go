@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strconv"
 
 	"github.com/johnyeocx/usual/server/constants"
@@ -31,7 +30,7 @@ func createBusiness(
 	}
 	
 	// 2. check that email is valid
-	if !isEmailValid(business.Email) {
+	if !constants.EmailValid(business.Email) {
 		return nil, &models.RequestError{
 			Err: fmt.Errorf("invalid email"),
 			StatusCode: http.StatusBadRequest,
@@ -51,10 +50,7 @@ func createBusiness(
 	return id, nil
 }
 
-func isEmailValid(e string) bool {
-    emailRegex := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
-    return emailRegex.MatchString(e)
-}
+
 
 func refreshToken(sqlDB *sql.DB, refreshToken string) (*int, error) {
 	businessId, userType, err := secure.ParseRefreshToken(refreshToken)

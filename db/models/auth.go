@@ -19,3 +19,8 @@ type PhoneNumber struct {
 	DialingCode		string	`json:"dialing_code"`
 	Number			string	`json:"number"`
 }
+
+type EmailOTP struct {
+	Email			string 	`json:"email"`
+	HashedOTP		string 	`json:"hashed_otp"`
+}

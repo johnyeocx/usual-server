@@ -1,5 +1,7 @@
 package constants
 
+import "regexp"
+
 type userTypes struct {
 	Customer string
 	Business string
@@ -8,6 +10,14 @@ type userTypes struct {
 var UserTypes = userTypes{
 	Customer: "customer",
 	Business: "business",
+}
+
+type otpTypes struct {
+	UpdateCusEmail string
+}
+
+var OtpTypes = otpTypes {
+	UpdateCusEmail: "customer_update_email",
 }
 
 var (
@@ -278,3 +288,8 @@ var (
 		"Åland Islands",
 	}
 )
+
+func EmailValid(e string) bool {
+    emailRegex := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+    return emailRegex.MatchString(e)
+}

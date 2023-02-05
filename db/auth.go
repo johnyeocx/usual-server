@@ -59,23 +59,23 @@ func (a *AuthDB) InsertBusinessDetails(business *models.BusinessDetails) (*int64
 	return &insertedId, nil
 }
 
-func (a *AuthDB) GetEmailVerification(email string, verificationType string) (*string, error) {
+func (a *AuthDB) GetEmailVerification(email string, verificationType string) (*models.EmailOTP, error) {
 
 	selectStatement := `
-		SELECT hashed_otp from email_otp WHERE
+		SELECT hashed_otp, email from email_otp WHERE
 		email=$1 AND type=$2 AND $3 <= expiry
 	`
 
 	row := a.DB.QueryRow(selectStatement, email, verificationType, time.Now().UTC())
 
-	var hashedOtp string
-	err := row.Scan(&hashedOtp);
+	var emailOtp models.EmailOTP
+	err := row.Scan(&emailOtp.HashedOTP, &emailOtp.Email);
 
 	if err == sql.ErrNoRows {
 		return nil, err
 	}
 
-	return &hashedOtp, nil
+	return &emailOtp, nil
 }
 
 func (a *AuthDB) DeleteEmailVerification(email string, verificationType string) (error) {

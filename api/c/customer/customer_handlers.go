@@ -2,6 +2,7 @@ package customer
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -19,8 +20,13 @@ func Routes(customerRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 	customerRouter.POST("create", createCustomerHandler(sqlDB))
 	customerRouter.POST("verify_email", verifyCustomerEmailHandler(sqlDB, s3Sess))
 	customerRouter.POST("create_from_subscribe", createCFromSubscribeHandler(sqlDB))
-	
 	customerRouter.POST("add_card", addCustomerCardHandler(sqlDB))
+
+	customerRouter.PATCH("name", updateCusNameHandler(sqlDB))
+	customerRouter.PATCH("email", sendCusUpdateEmailVerificationHandler(sqlDB))
+	customerRouter.PATCH("verify_email", verifyCusUpdateEmailHandler(sqlDB))
+	customerRouter.PATCH("address", updateCusAddressHandler(sqlDB))
+	customerRouter.PATCH("password", updateCusPasswordHandler(sqlDB))
 }
 
 func getCustomerDataHandler(sqlDB *sql.DB) gin.HandlerFunc {
@@ -161,5 +167,154 @@ func addCustomerCardHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(200, res)
+	}
+}
+
+func updateCusNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
+
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+		}
+
+		reqBody := struct {
+			Name	string `json:"name"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		reqErr := updateCusName(sqlDB, *cusId, reqBody.Name)
+		if reqErr != nil {
+			log.Printf("Failed to update cus name: %v\n", reqErr.Err)
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
+}
+
+func sendCusUpdateEmailVerificationHandler(sqlDB *sql.DB) gin.HandlerFunc {
+
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+		}
+
+		reqBody := struct {
+			Email	string `json:"email"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		reqErr := sendUpdateEmailVerification(sqlDB, *cusId, reqBody.Email)
+		if reqErr != nil {
+			log.Printf("Failed to send cus update email verification: %v\n", reqErr.Err)
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
+}
+
+func verifyCusUpdateEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
+
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+		}
+
+		reqBody := struct {
+			Email	string `json:"email"`
+			OTP 	string `json:"otp"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		reqErr := verifyUpdateCusEmail(sqlDB, *cusId, reqBody.OTP, reqBody.Email)
+		if reqErr != nil {
+			log.Printf("Failed to send cus update email verification: %v\n", reqErr.Err)
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
+}
+
+func updateCusAddressHandler(sqlDB *sql.DB) gin.HandlerFunc {
+
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+		}
+
+		reqBody := struct {
+			Address models.Address `json:"address"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		fmt.Println(reqBody)
+
+		reqErr := updateCusAddress(sqlDB, *cusId, reqBody.Address)
+		if reqErr != nil {
+			log.Printf("Failed to update cus name: %v\n", reqErr.Err)
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
+}
+
+func updateCusPasswordHandler(sqlDB *sql.DB) gin.HandlerFunc {
+
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+		}
+
+		reqBody := struct {
+			OldPassword string `json:"old_password"`
+			NewPassword string `json:"new_password"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		reqErr := updateCusPassword(sqlDB, *cusId, reqBody.OldPassword, reqBody.NewPassword)
+		if reqErr != nil {
+			log.Printf("Failed to update cus password: %v\n", reqErr.Err)
+			c.JSON(reqErr.StatusCode, err)
+			return
+		}
+
+		c.JSON(200, nil)
 	}
 }

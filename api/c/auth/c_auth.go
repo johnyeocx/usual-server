@@ -43,7 +43,7 @@ func login(
 
 	// 1. Get hashed password
 	c := db.CustomerDB{DB: sqlDB}
-	cusId, hashedPassword, err := c.GetCustomerHashedPassword(email)
+	cusId, hashedPassword, err := c.GetCusPasswordFromEmail(email)
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: fmt.Errorf("failed to get hashed password from email\n%v", err),

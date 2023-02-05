@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/secure"
@@ -76,23 +77,82 @@ func (c *CustomerDB) GetCustomerEmailVerified (
 func (c *CustomerDB) GetCustomerByID (
 	cusId int,
 ) (*models.Customer, error) {
-	var cus models.Customer 
+	var cus models.Customer
+	cus.Address = &models.CusAddress{} 
+
+	var total sql.NullInt64
+
+	now := time.Now()
+	monthAgo := time.Date(now.Year(), now.Month() - 1, now.Day(), 0, 0, 0, 0, time.UTC)
+
 	err := c.DB.QueryRow(`SELECT 
-		customer_id, name, email, stripe_id, default_card_id
-		FROM customer WHERE customer_id=$1`, 
-	cusId).Scan(
+	c.customer_id, c.name, c.email, c.stripe_id, c.default_card_id, 
+	c.address_line1, c.address_line2, c.postal_code, c.city, c.country
+	FROM customer as c 
+	WHERE customer_id=$1
+	GROUP BY c.customer_id, i.invoice_id`, 
+	monthAgo, cusId).Scan(
 		&cus.ID,
 		&cus.Name,
 		&cus.Email,
 		&cus.StripeID,
 		&cus.DefaultCardID,
+		&cus.Address.Line1,
+		&cus.Address.Line2,
+		&cus.Address.PostalCode,
+		&cus.Address.City,
+		&cus.Address.Country,
+		&total,
 	)
-
 	if err != nil {
 		return nil, err
 	}
 
 	return &cus, nil
+}
+
+func (c *CustomerDB) GetCustomerWithTotalByID (
+	cusId int,
+) (*models.Customer, *int, error) {
+	var cus models.Customer
+	cus.Address = &models.CusAddress{} 
+
+	var total sql.NullInt64
+
+	now := time.Now()
+	monthAgo := time.Date(now.Year(), now.Month() - 1, now.Day(), 0, 0, 0, 0, time.UTC)
+
+	err := c.DB.QueryRow(`SELECT 
+	c.customer_id, c.name, c.email, c.stripe_id, c.default_card_id, c.address_line1, c.address_line2, c.postal_code, c.city, c.country,
+	SUM(i.total) as total
+	FROM customer as c 
+	LEFT JOIN invoice as i on i.stripe_cus_id=c.stripe_id AND i.created > $1
+	WHERE customer_id=$2
+	GROUP BY c.customer_id, i.invoice_id`, 
+	monthAgo, cusId).Scan(
+		&cus.ID,
+		&cus.Name,
+		&cus.Email,
+		&cus.StripeID,
+		&cus.DefaultCardID,
+		&cus.Address.Line1,
+		&cus.Address.Line2,
+		&cus.Address.PostalCode,
+		&cus.Address.City,
+		&cus.Address.Country,
+		&total,
+	)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	totalInt := 0
+	if total.Valid {
+		totalInt = int(total.Int64)	
+	} 
+
+	return &cus, &totalInt, nil
 }
 
 func (c *CustomerDB) GetCustomerByEmail (
@@ -149,7 +209,7 @@ func (c *CustomerDB) GetCustomerAndCardStripeId (
 	return &cusStripeId, &cardStripeId, nil
 }
 
-func (c *CustomerDB) GetCustomerHashedPassword (
+func (c *CustomerDB) GetCusPasswordFromEmail (
 	email string,
 ) (*int, *string, error) {
 	var cusId int
@@ -162,6 +222,21 @@ func (c *CustomerDB) GetCustomerHashedPassword (
 		return nil, nil, err
 	}
 	return &cusId, &password, nil
+}
+
+func (c *CustomerDB) GetCusPasswordFromID (
+	cusId int,
+) (*string, error) {
+
+	var password string
+	err := c.DB.QueryRow("SELECT password FROM customer WHERE customer_id=$1", 
+		cusId,
+	).Scan(&password)
+
+	if err != nil {
+		return nil, err
+	}
+	return &password, nil
 }
 
 

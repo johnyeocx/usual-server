@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/google/uuid"
 	"github.com/johnyeocx/usual/server/api/auth"
+	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/media"
@@ -31,8 +32,13 @@ func CreateCustomer(
 ) (*models.RequestError) {
 	c := db.CustomerDB{DB: sqlDB}
 
-
-
+	// check email valid
+	if !constants.EmailValid(email) {
+		return &models.RequestError{
+			Err: errors.New("invalid customer email"),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
 
 	// step 1: Check if user already exists
 	verified, err := c.GetCustomerEmailVerified(email)
@@ -48,8 +54,8 @@ func CreateCustomer(
 		}
 	}
 
-		// 1. generate random 16 digit number
-		uuid := uuid.NewString()	
+	// 1. generate random 16 digit number
+	uuid := uuid.NewString()	
 
 	// if no rows
 	if err != nil && err == sql.ErrNoRows {
@@ -87,7 +93,7 @@ func VerifyCustomerEmail(
 ) (map[string]string, *models.RequestError) {
 
 	// 1. verify email otp
-	reqErr := auth.VerifyEmailOTP(sqlDB, email, otp, otpType)
+	_, reqErr := auth.VerifyEmailOTP(sqlDB, email, otp, otpType)
 	if reqErr != nil {
 		return nil, reqErr
 	}
@@ -223,7 +229,7 @@ func GetCustomerData(
 
 	c := db.CustomerDB{DB: sqlDB}
 	
-	cus, err := c.GetCustomerByID(cusId)
+	cus, total, err := c.GetCustomerWithTotalByID(cusId)
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
@@ -259,15 +265,13 @@ func GetCustomerData(
 
 
 	return map[string]interface{}{
+		"total": total,
 		"customer": cus,
 		"subscriptions": subs,
 		"cards": cards,
 		"invoices": invoices,
 	}, nil
 }
-
-
-
 
 func AddCusCreditCard(
 	sqlDB *sql.DB,
