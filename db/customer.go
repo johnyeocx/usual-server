@@ -80,18 +80,14 @@ func (c *CustomerDB) GetCustomerByID (
 	var cus models.Customer
 	cus.Address = &models.CusAddress{} 
 
-	var total sql.NullInt64
-
-	now := time.Now()
-	monthAgo := time.Date(now.Year(), now.Month() - 1, now.Day(), 0, 0, 0, 0, time.UTC)
 
 	err := c.DB.QueryRow(`SELECT 
 	c.customer_id, c.name, c.email, c.stripe_id, c.default_card_id, 
 	c.address_line1, c.address_line2, c.postal_code, c.city, c.country
 	FROM customer as c 
 	WHERE customer_id=$1
-	GROUP BY c.customer_id, i.invoice_id`, 
-	monthAgo, cusId).Scan(
+	GROUP BY c.customer_id`, 
+	cusId).Scan(
 		&cus.ID,
 		&cus.Name,
 		&cus.Email,
@@ -102,7 +98,6 @@ func (c *CustomerDB) GetCustomerByID (
 		&cus.Address.PostalCode,
 		&cus.Address.City,
 		&cus.Address.Country,
-		&total,
 	)
 	if err != nil {
 		return nil, err
@@ -278,19 +273,31 @@ func (c *CustomerDB) CheckCusSubscribed(cusId int, productIds []int) ( error) {
 }
 
 func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription, error) {
-	query := `SELECT 
-	s.sub_id, s.start_date, s.cancelled, s.expires, s.cancelled_date,
-	b.name, b.business_id, 
-	p.product_id, p.name, p.description, pc.title,
-	sp.plan_id, sp.product_id,
-	sp.recurring_interval, sp.recurring_interval_count, sp.unit_amount, sp.currency
-	from customer as c
-	JOIN subscription as s on c.customer_id=s.customer_id
-	JOIN subscription_plan as sp on s.plan_id=sp.plan_id
-	JOIN product as p on sp.product_id=p.product_id
-	JOIN product_category as pc on pc.category_id=p.category_id
-	JOIN business as b on b.business_id=p.business_id
-	WHERE c.customer_id=$1`
+	query := `
+	WITH ranked_table AS (
+
+		SELECT 
+		c.customer_id,
+		s.sub_id, s.start_date, s.cancelled, s.expires, s.cancelled_date, s.card_id,
+		b.name, b.business_id,
+		p.product_id, p.name, p.description, pc.title,
+		sp.plan_id, sp.recurring_interval, sp.recurring_interval_count, sp.unit_amount, sp.currency,
+		i.created, i.status, i.total,
+		ROW_NUMBER() OVER 
+		(PARTITION BY s.sub_id ORDER BY i.created DESC) as rank
+		FROM customer as c 
+		JOIN subscription as s ON c.customer_id=s.customer_id
+		JOIN subscription_plan as sp ON sp.plan_id=s.plan_id
+		JOIN product as p ON p.product_id=sp.product_id
+		JOIN product_category as pc ON pc.category_id=p.category_id
+		JOIN business as b ON b.business_id=p.business_id
+		JOIN invoice as i ON i.stripe_prod_id=p.stripe_product_id
+		GROUP BY sp.plan_id, p.product_id, s.sub_id, i.invoice_id, c.customer_id, pc.category_id, b.business_id
+	)
+	
+	SELECT * FROM ranked_table as r
+	WHERE r.customer_id=$1 AND rank=1
+	`
 	
 	
 	rows, err := c.DB.Query(query, cusId)
@@ -299,22 +306,32 @@ func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription,
 	}
 
 	subs := []models.Subscription{}
+
 	for rows.Next() {
 		var sub models.Subscription
-		sub.SubProduct = &models.SubscriptionProduct{}
+		var product models.Product
+		var plan models.SubscriptionPlan
+		plan.RecurringDuration = models.TimeFrame{}
+		var invoice models.Invoice
+		
+		var cusIdFiller int
+		var rank int
 		if err := rows.Scan(
-			&sub.ID,
-			&sub.StartDate, &sub.Cancelled, &sub.Expires, &sub.CancelledDate,
+			&cusIdFiller,
+			&sub.ID, &sub.StartDate, &sub.Cancelled, &sub.Expires, &sub.CancelledDate, &sub.CardID,
 			&sub.BusinessName, &sub.BusinessID,
-			&sub.SubProduct.Product.ProductID, &sub.SubProduct.Product.Name, &sub.SubProduct.Product.Description, &sub.SubProduct.Product.CatTitle,
-			&sub.SubProduct.SubPlan.PlanID, &sub.SubProduct.SubPlan.ProductID,
-			&sub.SubProduct.SubPlan.RecurringDuration.Interval,
-			&sub.SubProduct.SubPlan.RecurringDuration.IntervalCount,
-			&sub.SubProduct.SubPlan.UnitAmount,
-			&sub.SubProduct.SubPlan.Currency,
+			&product.ProductID, &product.Name, &product.Description, &product.CatTitle,
+			&plan.PlanID, &plan.RecurringDuration.Interval, &plan.RecurringDuration.IntervalCount, &plan.UnitAmount, &plan.Currency,
+			&invoice.Created, &invoice.Status, &invoice.Total, &rank,
 		); err != nil {
 			return nil, err
 		}
+
+		sub.SubProduct = &models.SubscriptionProduct{
+			Product: product,
+			SubPlan: plan,
+		}
+		sub.LastInvoice = &invoice
 		subs = append(subs, sub)
 	}
 

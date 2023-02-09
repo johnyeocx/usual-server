@@ -14,8 +14,10 @@ type Subscription struct {
 	Expires			JsonNullTime			`json:"expires"`
 
 	// additional for customer
-	BusinessName *string 				`json:"business_name"`
-	BusinessID 	 *int 					`json:"business_id"`
-	SubProduct	 *SubscriptionProduct 	`json:"sub_product"`
-	CardID		int						`json:"card_id"`
+	CardID			int						`json:"card_id"`
+	BusinessName 	*string 				`json:"business_name"`
+	BusinessID 	 	*int 					`json:"business_id"`
+	SubProduct	 	*SubscriptionProduct 	`json:"sub_product"`
+
+	LastInvoice		*Invoice			`json:"last_invoice"`
 }

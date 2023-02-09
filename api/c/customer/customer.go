@@ -229,13 +229,15 @@ func GetCustomerData(
 
 	c := db.CustomerDB{DB: sqlDB}
 	
-	cus, total, err := c.GetCustomerWithTotalByID(cusId)
+	cus, err := c.GetCustomerByID(cusId)
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
 			StatusCode: http.StatusBadGateway,
 		}
 	}
+
+
 
 	subs, err := c.GetCustomerSubscriptions(cusId)
 	if err != nil {
@@ -245,6 +247,8 @@ func GetCustomerData(
 		}
 	}
 
+
+
 	// get customer cards
 	cards, err := c.GetCustomerCards(cusId)
 	if err != nil {
@@ -253,6 +257,8 @@ func GetCustomerData(
 			StatusCode: http.StatusBadGateway,
 		}
 	}
+
+
 
 	// get invoices
 	invoices, err := c.GetCustomerInvoices(cusId)
@@ -265,7 +271,6 @@ func GetCustomerData(
 
 
 	return map[string]interface{}{
-		"total": total,
 		"customer": cus,
 		"subscriptions": subs,
 		"cards": cards,

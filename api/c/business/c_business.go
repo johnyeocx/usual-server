@@ -15,6 +15,7 @@ func GetExploreData(sqlDB *sql.DB) ([]models.ExploreResult, error) {
 		return nil, err
 	}
 
+
 	return res, nil
 }
 
@@ -81,7 +82,7 @@ func GetBusinessSubProducts(sqlDB *sql.DB, businessId int) (map[string]interface
 		return nil, err
 	}
 
-
+	
 	return map[string] interface{} {
 		"business": business,
 		"sub_products": *subProducts,
