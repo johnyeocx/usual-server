@@ -20,6 +20,8 @@ func Routes(businessRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 	businessRouter.GET("/:id", getBusinessHandler(sqlDB))
 	
 	businessRouter.GET("/accounts", accountSearch(sqlDB))
+	businessRouter.GET("/sub_products", searchSubProductsHandler(sqlDB))
+
 	businessRouter.GET("/sub_product/:id", getSubProductHandler(sqlDB))
 }
 
@@ -53,6 +55,27 @@ func accountSearch(sqlDB *sql.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, map[string]interface{}{
 			"accounts": accounts,
 		})
+		
+	}
+}
+
+func searchSubProductsHandler(sqlDB *sql.DB) gin.HandlerFunc {
+	return func (c *gin.Context) {
+		query := c.Query("q")
+		if query == "" {
+			c.JSON(http.StatusBadRequest, errors.New("query field empty"))
+			return
+		}
+		
+		res, err := SearchSubProducts(sqlDB, strings.ToLower(query))
+		if err != nil {
+			log.Println("Failed to search for sub products: ", err)
+			c.JSON(http.StatusBadGateway, err)
+			return
+		}
+		
+
+		c.JSON(http.StatusOK, res)
 		
 	}
 }

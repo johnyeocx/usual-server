@@ -371,10 +371,13 @@ func (c *CustomerDB) GetCustomerInvoices(cusId int) ([]models.Invoice, error) {
 	SELECT 
 	i.invoice_id, i.paid, i.attempted, i.status, i.total, i.created, i.invoice_url, 
 	s.sub_id, s.plan_id, s.start_date, 
+	p.product_id, p.name, b.business_id, b.name,
 	cc.card_id, cc.brand, cc.last4
 	from invoice as i
 	JOIN customer as c ON i.stripe_cus_id=c.stripe_id
 	JOIN subscription_plan as sp on i.stripe_price_id=sp.stripe_price_id
+	JOIN product as p on p.product_id=sp.product_id
+	JOIN business as b on b.business_id=p.business_id
 	JOIN subscription as s on sp.plan_id=s.plan_id
 	JOIN customer_card as cc on cc.card_id=s.card_id
 
@@ -391,13 +394,18 @@ func (c *CustomerDB) GetCustomerInvoices(cusId int) ([]models.Invoice, error) {
 	for rows.Next() {
 		var in models.Invoice
 		in.Subscription = &models.Subscription{}
+		var product models.Product
 		in.CardInfo = &models.CardInfo{}
 		if err := rows.Scan(
 			&in.ID, &in.Paid, &in.Attempted, &in.Status, &in.Total, &in.Created, &in.InvoiceURL,
 			&in.Subscription.ID, &in.Subscription.PlanID, &in.Subscription.StartDate,
+			&product.ProductID, &product.Name, &in.Subscription.BusinessID, &in.Subscription.BusinessName,
 			&in.CardInfo.ID, &in.CardInfo.Brand, &in.CardInfo.Last4,
 		); err != nil {
 			return nil, err
+		}
+		in.Subscription.SubProduct = &models.SubscriptionProduct{
+			Product: product,
 		}
 		invoices = append(invoices, in)
 	}

@@ -19,7 +19,6 @@ func GetExploreData(sqlDB *sql.DB) ([]models.ExploreResult, error) {
 	return res, nil
 }
 
-
 func SearchAccounts(sqlDB *sql.DB, query string) ([]models.Business, error) {
 	b := db.BusinessDB{DB: sqlDB}
 	accounts, err := b.SearchAccounts(query)
@@ -28,6 +27,16 @@ func SearchAccounts(sqlDB *sql.DB, query string) ([]models.Business, error) {
 	}
 
 	return accounts, nil
+}
+
+func SearchSubProducts(sqlDB *sql.DB, query string) ([]models.ExploreResult, error) {
+	b := db.BusinessDB{DB: sqlDB}
+	res, err := b.SearchSubProducts(query)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func GetBusinessByID(sqlDB *sql.DB, businessId int) (map[string]interface{}, error) {

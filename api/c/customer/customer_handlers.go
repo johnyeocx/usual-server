@@ -16,6 +16,7 @@ import (
 
 func Routes(customerRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
 	customerRouter.GET("data", getCustomerDataHandler(sqlDB))
+	customerRouter.GET("subs", getCusSubsAndInvoicesHandler(sqlDB))
 
 	customerRouter.POST("create", createCustomerHandler(sqlDB))
 	customerRouter.POST("verify_email", verifyCustomerEmailHandler(sqlDB, s3Sess))
@@ -49,6 +50,31 @@ func getCustomerDataHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, res)
 	}
 }
+
+func getCusSubsAndInvoicesHandler(
+	sqlDB *sql.DB,
+) gin.HandlerFunc {
+
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+			return
+		}
+
+
+		res, reqErr := GetCusSubsAndInvoices(sqlDB, *cusId)
+		if reqErr != nil {
+			log.Println("Failed to get customer: ", reqErr.Err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
 
 func createCustomerHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {

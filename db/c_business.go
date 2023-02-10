@@ -77,6 +77,79 @@ func (b *BusinessDB) GetBusinessWithTopSubbedProduct(
 	return results, nil
 }
 
+func (b *BusinessDB) SearchSubProducts(q string) ([]models.ExploreResult, error){
+		search := "%" + q + "%"
+		query := `
+		SELECT 
+		b.business_id, b.name, b.business_category, b.description, b.business_url,
+		p.product_id, p.name, p.description, pc.title,
+		sp.plan_id, recurring_interval, recurring_interval_count, unit_amount
+				
+		FROM product as p 
+		JOIN subscription_plan as sp on sp.product_id=p.product_id 
+		JOIN product_category as pc on p.category_id=pc.category_id
+		JOIN business as b on b.business_id=p.business_id 
+		
+		WHERE
+		LOWER(pc.title) LIKE $1 OR
+		LOWER(p.name) LIKE $1 OR
+		LOWER(p.description) LIKE $1
+		
+		GROUP BY p.product_id, b.business_id, pc.category_id, sp.plan_id
+		
+		order by
+		case
+			WHEN LOWER(p."name") LIKE $1 then 0
+			WHEN LOWER(pc.title) LIKE $1 then 1
+			WHEN LOWER(p.description) LIKE $1 then 2
+			else 3
+		end asc;
+		`
+	
+		rows, err := b.DB.Query(query, search)
+		if err != nil {
+			return nil, err
+		}
+	
+		defer rows.Close()
+	
+		results := []models.ExploreResult{}
+	
+		for rows.Next() {
+			var product models.Product
+			var business models.Business
+			var plan models.SubscriptionPlan
+	
+			if err := rows.Scan(
+				&business.ID,
+				&business.Name,
+				&business.BusinessCategory,
+				&business.Description,
+				&business.BusinessUrl,
+				&product.ProductID,
+				&product.Name,
+				&product.Description,
+				&product.CatTitle,
+				&plan.PlanID,
+				&plan.RecurringDuration.Interval,
+				&plan.RecurringDuration.IntervalCount,
+				&plan.UnitAmount,
+			); err != nil {
+				continue
+			}
+	
+			results = append(results, models.ExploreResult{
+				Business: business,
+				SubProduct: models.SubscriptionProduct{
+					Product: product,
+					SubPlan: plan,
+				},
+			})
+		}
+	
+		return results, nil
+	}
+
 func (b *BusinessDB) SearchAccounts(
 	q string,	
 ) ([]models.Business, error) {

@@ -278,6 +278,37 @@ func GetCustomerData(
 	}, nil
 }
 
+func GetCusSubsAndInvoices(
+	sqlDB *sql.DB,
+	cusId int,
+) (map[string]interface{}, *models.RequestError) {
+
+	c := db.CustomerDB{DB: sqlDB}
+
+	subs, err := c.GetCustomerSubscriptions(cusId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// get invoices
+	invoices, err := c.GetCustomerInvoices(cusId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+
+	return map[string]interface{}{
+		"subscriptions": subs,
+		"invoices": invoices,
+	}, nil
+}
+
 func AddCusCreditCard(
 	sqlDB *sql.DB,
 	cusId int,
