@@ -23,6 +23,7 @@ type CardInfo struct {
 
 type Invoice struct {
 	ID					int 			`json:"invoice_id"`
+	SubID				*int				`json:"sub_id"`
 	InStripeID			string 			`json:"stripe_in_id"`
 	CusStripeID			string 			`json:"stripe_cus_id"`
 	SubStripeID			JsonNullString 	`json:"stripe_sub_id"`

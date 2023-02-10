@@ -385,6 +385,8 @@ func (c *CustomerDB) GetCustomerInvoices(cusId int) ([]models.Invoice, error) {
 	ORDER BY created DESC
 	LIMIT 100
 	`
+
+
 	rows, err := c.DB.Query(query, cusId)
 	if err != nil {
 		return nil, err
