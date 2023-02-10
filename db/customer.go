@@ -375,11 +375,12 @@ func (c *CustomerDB) GetCustomerInvoices(cusId int) ([]models.Invoice, error) {
 	cc.card_id, cc.brand, cc.last4
 	from invoice as i
 	JOIN customer as c ON i.stripe_cus_id=c.stripe_id
+	JOIN subscription as s on i.sub_id=s.sub_id
+	JOIN customer_card as cc on cc.card_id=s.card_id
 	JOIN subscription_plan as sp on i.stripe_price_id=sp.stripe_price_id
 	JOIN product as p on p.product_id=sp.product_id
 	JOIN business as b on b.business_id=p.business_id
-	JOIN subscription as s on sp.plan_id=s.plan_id
-	JOIN customer_card as cc on cc.card_id=s.card_id
+	
 
 	WHERE c.customer_id=$1
 	ORDER BY created DESC
@@ -454,7 +455,7 @@ func (c *CustomerDB) GetSubInvoices(
 	JOIN subscription as s on s.customer_id=c.customer_id
 	JOIN subscription_plan as sp on sp.plan_id=s.plan_id
 	JOIN product as p on p.product_id=sp.product_id
-	JOIN invoice as i ON i.stripe_prod_id=p.stripe_product_id
+	JOIN invoice as i ON i.sub_id=s.sub_id
 	JOIN customer_card as cc on cc.card_id=s.card_id
 	WHERE c.customer_id=$1 AND p.product_id=$2
 	ORDER BY i.created DESC
