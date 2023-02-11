@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/secure"
@@ -15,7 +14,8 @@ type CustomerDB struct {
 }
 
 func (c *CustomerDB) CreateCustomer (
-	name string,
+	firstName string,
+	lastName string,
 	email string,
 	password string,
 	uuid string,
@@ -27,8 +27,8 @@ func (c *CustomerDB) CreateCustomer (
 
 	var cusId int
 	err = c.DB.QueryRow(`
-		INSERT into customer (name, email, password, uuid) VALUES ($1, $2, $3, $4) RETURNING customer_id`,
-		name, email, hashedPassword, uuid,
+		INSERT into customer (first_name, last_name, email, password, uuid) VALUES ($1, $2, $3, $4, $5) RETURNING customer_id`,
+		firstName, lastName, email, hashedPassword, uuid,
 	).Scan(&cusId)
 
 	if err != nil {
@@ -82,14 +82,15 @@ func (c *CustomerDB) GetCustomerByID (
 
 
 	err := c.DB.QueryRow(`SELECT 
-	c.customer_id, c.name, c.email, c.stripe_id, c.default_card_id, 
+	c.customer_id, c.first_name, c.last_name, c.email, c.stripe_id, c.default_card_id, 
 	c.address_line1, c.address_line2, c.postal_code, c.city, c.country
 	FROM customer as c 
 	WHERE customer_id=$1
 	GROUP BY c.customer_id`, 
 	cusId).Scan(
 		&cus.ID,
-		&cus.Name,
+		&cus.FirstName,
+		&cus.LastName,
 		&cus.Email,
 		&cus.StripeID,
 		&cus.DefaultCardID,
@@ -106,60 +107,17 @@ func (c *CustomerDB) GetCustomerByID (
 	return &cus, nil
 }
 
-func (c *CustomerDB) GetCustomerWithTotalByID (
-	cusId int,
-) (*models.Customer, *int, error) {
-	var cus models.Customer
-	cus.Address = &models.CusAddress{} 
-
-	var total sql.NullInt64
-
-	now := time.Now()
-	monthAgo := time.Date(now.Year(), now.Month() - 1, now.Day(), 0, 0, 0, 0, time.UTC)
-
-	err := c.DB.QueryRow(`SELECT 
-	c.customer_id, c.name, c.email, c.stripe_id, c.default_card_id, c.address_line1, c.address_line2, c.postal_code, c.city, c.country,
-	SUM(i.total) as total
-	FROM customer as c 
-	LEFT JOIN invoice as i on i.stripe_cus_id=c.stripe_id AND i.created > $1
-	WHERE customer_id=$2
-	GROUP BY c.customer_id, i.invoice_id`, 
-	monthAgo, cusId).Scan(
-		&cus.ID,
-		&cus.Name,
-		&cus.Email,
-		&cus.StripeID,
-		&cus.DefaultCardID,
-		&cus.Address.Line1,
-		&cus.Address.Line2,
-		&cus.Address.PostalCode,
-		&cus.Address.City,
-		&cus.Address.Country,
-		&total,
-	)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	totalInt := 0
-	if total.Valid {
-		totalInt = int(total.Int64)	
-	} 
-
-	return &cus, &totalInt, nil
-}
-
 func (c *CustomerDB) GetCustomerByEmail (
 	email string,
 ) (*models.Customer, error) {
 	var cus models.Customer 
 	err := c.DB.QueryRow(`SELECT 
-		customer_id, name, email, uuid
+		customer_id, first_name, last_name, email, uuid
 		FROM customer WHERE email=$1`, 
 	email).Scan(
 		&cus.ID,
-		&cus.Name,
+		&cus.FirstName,
+		&cus.LastName,
 		&cus.Email,
 		&cus.Uuid,
 	)

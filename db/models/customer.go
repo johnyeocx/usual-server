@@ -4,7 +4,8 @@ import "time"
 
 type Customer struct {
 	ID 					int 			`json:"customer_id"`
-	Name				string 			`json:"name"`
+	FirstName			string 			`json:"first_name"`
+	LastName			string 			`json:"last_name"`
 	Email 				string 			`json:"email"`
 	Address 			*CusAddress 	`json:"address"`
 	StripeID 			string 			`json:"stripe_id"`

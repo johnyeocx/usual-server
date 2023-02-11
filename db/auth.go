@@ -145,18 +145,17 @@ func ValidateBusinessId (sqlDB *sql.DB, businessId int) (bool) {
 }
 
 func ValidateCustomerId (sqlDB *sql.DB, id int) (bool) {
-	var name string
 	var email string
 
-	err := sqlDB.QueryRow("SELECT name, email FROM customer WHERE customer_id=$1", 
+	err := sqlDB.QueryRow("SELECT email FROM customer WHERE customer_id=$1", 
 		id,
-	).Scan(&name, &email) 
+	).Scan(&email) 
 	
 	if err != nil {
 		return false
 	}
 	
-	return name != "" && email != ""
+	return email != ""
 }
 
 

@@ -297,7 +297,7 @@ func (s *BusinessDB) GetSubProductInvoices(
 func (s *BusinessDB) GetSubProductSubscribers(
 	productId int,
 ) (*[]models.Customer, error) {
-	stmt := `SELECT c.customer_id, c.name  from product as 
+	stmt := `SELECT c.customer_id, c.first_name, c.last_name  from product as 
 	p JOIN subscription_plan as sp ON p.product_id=sp.product_id
 	JOIN subscription as s ON s.plan_id=sp.plan_id 
 	JOIN customer as c ON s.customer_id=c.customer_id
@@ -317,7 +317,8 @@ func (s *BusinessDB) GetSubProductSubscribers(
 		var subscriber models.Customer
         if err := rows.Scan(
 			&subscriber.ID,
-			&subscriber.Name,
+			&subscriber.FirstName,
+			&subscriber.LastName,
 		); err != nil {
 			continue
         }

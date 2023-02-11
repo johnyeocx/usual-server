@@ -125,7 +125,7 @@ func AuthenticateCId(c *gin.Context, sqlDB *sql.DB) (*int, error) {
 	}
 	
 	if ok := db.ValidateCustomerId(sqlDB, customerIdInt); !ok {
-		return nil, fmt.Errorf("invalid business id")
+		return nil, fmt.Errorf("invalid customer id")
 	}
 
 	return &customerIdInt, nil

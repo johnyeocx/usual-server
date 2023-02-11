@@ -2,9 +2,7 @@ package customer
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -26,7 +24,8 @@ var (
 
 func CreateCustomer(
 	sqlDB *sql.DB,
-	name string,
+	firstName string,
+	lastName string,
 	email string,
 	password string,
 ) (*models.RequestError) {
@@ -59,7 +58,7 @@ func CreateCustomer(
 
 	// if no rows
 	if err != nil && err == sql.ErrNoRows {
-		_, err = c.CreateCustomer(name, email, password, uuid)
+		_, err = c.CreateCustomer(firstName, lastName, email, password, uuid)
 		if err != nil {
 			return &models.RequestError{
 				Err: err,
@@ -74,7 +73,7 @@ func CreateCustomer(
 		return reqErr
 	}
 	
-	err = media.SendEmailVerification(email, name, *otp)
+	err = media.SendEmailVerification(email, firstName, *otp)
 	if err != nil {
 		return &models.RequestError{
 			Err: err,
@@ -136,7 +135,8 @@ func VerifyCustomerEmail(
 	}
 
 	// 6. Add pkpass and image to cloud
-	err = passes.GenerateCustomerPass(s3sess, cus.Name, cus.Uuid, cus.ID)
+	fullName := cus.FirstName + " " + cus.LastName
+	err = passes.GenerateCustomerPass(s3sess, fullName, cus.Uuid, cus.ID)
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
@@ -172,54 +172,6 @@ func VerifyCustomerEmail(
 		"access_token": accessToken,
 		"refresh_token": refreshToken,
 	}, nil
-}
-
-func CreateCFromSubscribe(
-	sqlDB *sql.DB,
-	name string,
-	email string,
-	card *models.CreditCard,
-) (*int, *models.RequestError) {
-
-	// 1. check if customer already created
-	c := db.CustomerDB{DB: sqlDB}
-	_, err := c.GetCustomerByEmail(email) 
-
-	if err == nil || err != sql.ErrNoRows {
-		return  nil, &models.RequestError{
-			Err: err,
-			StatusCode: http.StatusConflict,
-		}
-	}
-	
-	newC := models.Customer {
-		Name: name,
-		Email: email,
-	}
-	// 2. Create stripe customer
-	stripeId, err := my_stripe.CreateCustomer(&newC, card)
-	if err != nil {
-		errMap := map[string]interface{}{}
-		json.Unmarshal([]byte(err.Error()), &errMap)
-		fmt.Println(errMap["code"])
-
-		// handle card declined
-		return nil, &models.RequestError{
-			Err: err,
-			StatusCode: http.StatusBadGateway,
-		}
-	}
-
-	// 3. Insert into db
-	cId, err := c.CreateCFromSubscribe(name, email, *stripeId)
-	if err != nil {
-		return nil, &models.RequestError{
-			Err: err,
-			StatusCode: http.StatusBadGateway,
-		}
-	} else {
-		return cId, nil
-	}
 }
 
 func GetCustomerData(

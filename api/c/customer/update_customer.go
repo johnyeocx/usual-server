@@ -98,7 +98,7 @@ func sendUpdateEmailVerification(
 		return reqErr
 	}
 	
-	err = media.SendEmailVerification(newEmail, cus.Name, *otp)
+	err = media.SendEmailVerification(newEmail, cus.FirstName, *otp)
 	if err != nil {
 		return &models.RequestError{
 			Err: err,
