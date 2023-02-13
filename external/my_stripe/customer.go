@@ -10,7 +10,7 @@ import (
 func CreateCustomerNoPayment(newC *models.Customer) (*string, error) {
 	stripe.Key = stripeSecretKey()
 
-	name := newC.FirstName + newC.LastName
+	name := newC.FullName()
 	// 2. CREATE CUSTOMER
 	params := &stripe.CustomerParams{
 		Name: stripe.String(name),

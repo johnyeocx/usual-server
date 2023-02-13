@@ -155,6 +155,7 @@ func ValidateCustomerId (sqlDB *sql.DB, id int) (bool) {
 		return false
 	}
 	
+
 	return email != ""
 }
 

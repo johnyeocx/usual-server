@@ -2,12 +2,14 @@ package customer
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
+	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/middleware"
 )
@@ -18,8 +20,8 @@ func Routes(customerRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 
 	customerRouter.POST("create", createCustomerHandler(sqlDB))
 	customerRouter.POST("verify_email", verifyCustomerEmailHandler(sqlDB, s3Sess))
-
 	customerRouter.POST("add_card", addCustomerCardHandler(sqlDB))
+	customerRouter.POST("resend_email_otp", resendEmailOTPHandler(sqlDB))
 
 	customerRouter.PATCH("name", updateCusNameHandler(sqlDB))
 	customerRouter.PATCH("email", sendCusUpdateEmailVerificationHandler(sqlDB))
@@ -116,7 +118,7 @@ func verifyCustomerEmailHandler(sqlDB *sql.DB, s3Sess *session.Session) gin.Hand
 		}
 		
 		// 2. Verify email
-		res, reqErr := VerifyCustomerEmail(s3Sess, sqlDB, reqBody.Email, reqBody.OTP)
+		res, reqErr := VerifyCustomerRegEmail(s3Sess, sqlDB, reqBody.Email, reqBody.OTP)
 		if reqErr != nil {
 			log.Println(reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)
@@ -127,6 +129,44 @@ func verifyCustomerEmailHandler(sqlDB *sql.DB, s3Sess *session.Session) gin.Hand
 	}
 }
 
+func resendEmailOTPHandler(sqlDB *sql.DB) gin.HandlerFunc {
+	return func (c* gin.Context) {
+		reqBody := struct {
+			Email 	string	`json:"email"`
+			OtpType  string  `json:"otp_type"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		
+		var reqErr *models.RequestError
+		if reqBody.OtpType == constants.OtpTypes.RegisterCusEmail {
+
+			reqErr = sendRegEmailOTP(sqlDB, reqBody.Email)
+		} else if reqBody.OtpType == constants.OtpTypes.UpdateCusEmail {
+			cusId, err := middleware.AuthenticateCId(c, sqlDB)
+			if err != nil {
+				c.JSON(http.StatusUnauthorized, err)
+				return
+			}
+			reqErr = sendUpdateEmailOTP(sqlDB, *cusId, reqBody.Email)
+		} else {
+			c.JSON(http.StatusBadRequest, errors.New("invalid otp type"))
+		}
+
+		if reqErr != nil {
+			log.Printf("Failed to resend cus update email verification: %v\n", reqErr.Err)
+			c.JSON(http.StatusBadGateway, reqErr.Err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
+}
 
 func addCustomerCardHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
@@ -174,7 +214,8 @@ func updateCusNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 
 		reqBody := struct {
-			Name	string `json:"name"`
+			FirstName	string `json:"first_name"`
+			LastName	string `json:"last_name"`
 		}{}
 
 		if err := c.BindJSON(&reqBody); err != nil {
@@ -183,7 +224,7 @@ func updateCusNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		reqErr := updateCusName(sqlDB, *cusId, reqBody.Name)
+		reqErr := updateCusName(sqlDB, *cusId, reqBody.FirstName, reqBody.LastName)
 		if reqErr != nil {
 			log.Printf("Failed to update cus name: %v\n", reqErr.Err)
 			c.JSON(http.StatusBadGateway, err)
@@ -212,7 +253,7 @@ func sendCusUpdateEmailVerificationHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		reqErr := sendUpdateEmailVerification(sqlDB, *cusId, reqBody.Email)
+		reqErr := sendUpdateEmailOTP(sqlDB, *cusId, reqBody.Email)
 		if reqErr != nil {
 			log.Printf("Failed to send cus update email verification: %v\n", reqErr.Err)
 			c.JSON(http.StatusBadGateway, err)

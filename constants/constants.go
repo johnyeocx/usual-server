@@ -13,10 +13,12 @@ var UserTypes = userTypes{
 }
 
 type otpTypes struct {
+	RegisterCusEmail string
 	UpdateCusEmail string
 }
 
 var OtpTypes = otpTypes {
+	RegisterCusEmail: "customer_register",
 	UpdateCusEmail: "customer_update_email",
 }
 
@@ -292,4 +294,8 @@ var (
 func EmailValid(e string) bool {
     emailRegex := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
     return emailRegex.MatchString(e)
+}
+
+func FullName(firstName string, lastName string) string {
+	return firstName + " " + lastName
 }

@@ -240,16 +240,16 @@ func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription,
 		b.name, b.business_id,
 		p.product_id, p.name, p.description, pc.title,
 		sp.plan_id, sp.recurring_interval, sp.recurring_interval_count, sp.unit_amount, sp.currency,
-		i.created, i.status, i.total,
+		i.invoice_id, i.created, i.status, i.total, i.invoice_url,
 		ROW_NUMBER() OVER 
 		(PARTITION BY s.sub_id ORDER BY i.created DESC) as rank
 		FROM customer as c 
 		JOIN subscription as s ON c.customer_id=s.customer_id
+		JOIN invoice as i ON i.sub_id=s.sub_id
 		JOIN subscription_plan as sp ON sp.plan_id=s.plan_id
 		JOIN product as p ON p.product_id=sp.product_id
 		JOIN product_category as pc ON pc.category_id=p.category_id
 		JOIN business as b ON b.business_id=p.business_id
-		JOIN invoice as i ON i.stripe_prod_id=p.stripe_product_id
 		GROUP BY sp.plan_id, p.product_id, s.sub_id, i.invoice_id, c.customer_id, pc.category_id, b.business_id
 	)
 	
@@ -280,7 +280,7 @@ func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription,
 			&sub.BusinessName, &sub.BusinessID,
 			&product.ProductID, &product.Name, &product.Description, &product.CatTitle,
 			&plan.PlanID, &plan.RecurringDuration.Interval, &plan.RecurringDuration.IntervalCount, &plan.UnitAmount, &plan.Currency,
-			&invoice.Created, &invoice.Status, &invoice.Total, &rank,
+			&invoice.ID, &invoice.Created, &invoice.Status, &invoice.Total, &invoice.InvoiceURL, &rank,
 		); err != nil {
 			return nil, err
 		}
@@ -328,9 +328,7 @@ func (c *CustomerDB) GetCustomerInvoices(cusId int) ([]models.Invoice, error) {
 	query := `
 	SELECT 
 	i.invoice_id, i.paid, i.attempted, i.status, i.total, i.created, i.invoice_url, 
-	s.sub_id, s.plan_id, s.start_date, 
-	p.product_id, p.name, b.business_id, b.name,
-	cc.card_id, cc.brand, cc.last4
+	s.sub_id, s.card_id
 	from invoice as i
 	JOIN customer as c ON i.stripe_cus_id=c.stripe_id
 	JOIN subscription as s on i.sub_id=s.sub_id
@@ -345,6 +343,8 @@ func (c *CustomerDB) GetCustomerInvoices(cusId int) ([]models.Invoice, error) {
 	LIMIT 100
 	`
 
+	// s.plan_id, s.start_date
+	// p.product_id, p.name, b.business_id, b.name,
 
 	rows, err := c.DB.Query(query, cusId)
 	if err != nil {
@@ -355,19 +355,18 @@ func (c *CustomerDB) GetCustomerInvoices(cusId int) ([]models.Invoice, error) {
 	for rows.Next() {
 		var in models.Invoice
 		in.Subscription = &models.Subscription{}
-		var product models.Product
+		// var product models.Product
 		in.CardInfo = &models.CardInfo{}
 		if err := rows.Scan(
 			&in.ID, &in.Paid, &in.Attempted, &in.Status, &in.Total, &in.Created, &in.InvoiceURL,
-			&in.Subscription.ID, &in.Subscription.PlanID, &in.Subscription.StartDate,
-			&product.ProductID, &product.Name, &in.Subscription.BusinessID, &in.Subscription.BusinessName,
-			&in.CardInfo.ID, &in.CardInfo.Brand, &in.CardInfo.Last4,
+			&in.SubID,
+			&in.CardID,
 		); err != nil {
 			return nil, err
 		}
-		in.Subscription.SubProduct = &models.SubscriptionProduct{
-			Product: product,
-		}
+		// in.Subscription.SubProduct = &models.SubscriptionProduct{
+		// 	Product: product,
+		// }
 		invoices = append(invoices, in)
 	}
 
@@ -407,8 +406,7 @@ func (c *CustomerDB) GetSubInvoices(
 	query := fmt.Sprintf(`
 	SELECT 
 	i.invoice_id, i.paid, i.attempted, i.status, i.total, i.created, i.invoice_url, 
-	s.sub_id, s.plan_id, s.start_date, 
-	cc.card_id, cc.brand, cc.last4
+	i.sub_id, cc.card_id
 	FROM customer as c 
 	JOIN subscription as s on s.customer_id=c.customer_id
 	JOIN subscription_plan as sp on sp.plan_id=s.plan_id
@@ -433,8 +431,8 @@ func (c *CustomerDB) GetSubInvoices(
 		in.CardInfo = &models.CardInfo{}
 		if err := rows.Scan(
 			&in.ID, &in.Paid, &in.Attempted, &in.Status, &in.Total, &in.Created, &in.InvoiceURL,
-			&in.Subscription.ID, &in.Subscription.PlanID, &in.Subscription.StartDate,
-			&in.CardInfo.ID, &in.CardInfo.Brand, &in.CardInfo.Last4,
+			&in.SubID,
+			&in.CardID,
 		); err != nil {
 			return nil, err
 		}

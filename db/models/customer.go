@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/johnyeocx/usual/server/constants"
+)
 
 type Customer struct {
 	ID 					int 			`json:"customer_id"`
@@ -11,6 +15,10 @@ type Customer struct {
 	StripeID 			string 			`json:"stripe_id"`
 	DefaultCardID	 	JsonNullInt16	`json:"default_card_id"`
 	Uuid 				string 			`json:"uuid"`
+}
+
+func (c* Customer) FullName() string{
+	return constants.FullName(c.FirstName, c.LastName)
 }
 
 type CardInfo struct {
@@ -38,6 +46,7 @@ type Invoice struct {
 	InvoiceURL			string			`json:"invoice_url"`
 	DefaultPaymentMethod	JsonNullString		`json:"default_payment_method"`
 	ApplicationFeeAmt	JsonNullInt64 	`json:"app_fee_amt"`
+	CardID				int				`json:"card_id"`
 
 	// NULLLABLES
 	Subscription		*Subscription   `json:"sub"`

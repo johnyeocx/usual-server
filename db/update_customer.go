@@ -7,9 +7,9 @@ import (
 )
 
 
-func (c *CustomerDB) UpdateCusName(cusId int, name string) (error){
+func (c *CustomerDB) UpdateCusName(cusId int, firstName string, lastName string) (error){
 
-	_, err := c.DB.Exec(`UPDATE customer SET name=$1 WHERE customer_id=$2`, name, cusId)
+	_, err := c.DB.Exec(`UPDATE customer SET first_name=$1, last_name=$2 WHERE customer_id=$3`, firstName, lastName, cusId)
 	return err
 }
 

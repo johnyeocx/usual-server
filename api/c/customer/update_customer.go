@@ -17,7 +17,8 @@ import (
 func updateCusName(
 	sqlDB *sql.DB,
 	cusId int,
-	name string,
+	firstName string,
+	lastName string,
 ) (*models.RequestError) {
 
 	// 1. get stripe id from db
@@ -31,6 +32,7 @@ func updateCusName(
 	}
 
 	// // 2. update stripe profile
+	name := constants.FullName(firstName, lastName)
 	err = my_stripe.UpdateCusName(*stripeId, name)
 	if err != nil {
 		return &models.RequestError{
@@ -40,7 +42,7 @@ func updateCusName(
 	}
 
 	// 3. update sql
-	err = c.UpdateCusName(cusId, name)
+	err = c.UpdateCusName(cusId, firstName, lastName)
 	if err != nil {
 		return &models.RequestError{
 			Err: err,
@@ -50,7 +52,8 @@ func updateCusName(
 	return nil
 }
 
-func sendUpdateEmailVerification(
+
+func sendUpdateEmailOTP(
 	sqlDB *sql.DB,
 	cusId int,
 	newEmail string,
@@ -65,7 +68,7 @@ func sendUpdateEmailVerification(
 		}
 	}
 
-	// step 1: Check if user already exists
+	// step 1: Check if email already taken
 	verified, err := c.GetCustomerEmailVerified(newEmail)
 	if err != nil && err != sql.ErrNoRows{
 		return &models.RequestError{
@@ -97,7 +100,7 @@ func sendUpdateEmailVerification(
 	if reqErr != nil {
 		return reqErr
 	}
-	
+
 	err = media.SendEmailVerification(newEmail, cus.FirstName, *otp)
 	if err != nil {
 		return &models.RequestError{

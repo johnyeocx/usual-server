@@ -67,6 +67,7 @@ func UserCtx(c *gin.Context) (interface{}, interface{}, error) {
 			StatusCode: http.StatusUnauthorized, 
 			Err: errors.New("user id not found in context"),
 		}
+
 		return nil, nil, err.Err
 	}
 
@@ -114,7 +115,7 @@ func AuthenticateCId(c *gin.Context, sqlDB *sql.DB) (*int, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	
 	if cusType != constants.UserTypes.Customer {
 		return nil, errors.New("wrong type token")
 	}
@@ -124,6 +125,7 @@ func AuthenticateCId(c *gin.Context, sqlDB *sql.DB) (*int, error) {
 		return nil, err
 	}
 	
+
 	if ok := db.ValidateCustomerId(sqlDB, customerIdInt); !ok {
 		return nil, fmt.Errorf("invalid customer id")
 	}

@@ -18,9 +18,9 @@ import (
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
 
-var (
-	otpType = "customer_register"
-)
+// var (
+// 	otpType = "customer_register"
+// )
 
 func CreateCustomer(
 	sqlDB *sql.DB,
@@ -84,7 +84,7 @@ func CreateCustomer(
 	return nil
 }
 
-func VerifyCustomerEmail(
+func VerifyCustomerRegEmail(
 	s3sess *session.Session,
 	sqlDB *sql.DB,
 	email string,
@@ -92,7 +92,7 @@ func VerifyCustomerEmail(
 ) (map[string]string, *models.RequestError) {
 
 	// 1. verify email otp
-	_, reqErr := auth.VerifyEmailOTP(sqlDB, email, otp, otpType)
+	_, reqErr := auth.VerifyEmailOTP(sqlDB, email, otp, constants.OtpTypes.RegisterCusEmail)
 	if reqErr != nil {
 		return nil, reqErr
 	}
@@ -172,6 +172,66 @@ func VerifyCustomerEmail(
 		"access_token": accessToken,
 		"refresh_token": refreshToken,
 	}, nil
+}
+
+
+
+func sendRegEmailOTP(
+	sqlDB *sql.DB,
+	newEmail string,
+) (*models.RequestError){
+	c := db.CustomerDB{DB: sqlDB}
+
+	// check email valid
+	if !constants.EmailValid(newEmail) {
+		return &models.RequestError{
+			Err: errors.New("invalid customer email"),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	// step 1: Check if email already taken
+	verified, err := c.GetCustomerEmailVerified(newEmail)
+	if err != nil && err != sql.ErrNoRows{
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	} else if verified {
+		return &models.RequestError{
+			Err: errors.New("email already exists"),
+			StatusCode: http.StatusConflict,
+		}
+	}
+
+	// step 1: get cus name
+	cus, err := c.GetCustomerByEmail(newEmail)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	// step 2: send verification email
+	otp, reqErr := auth.GenerateEmailOTP(
+		sqlDB, 
+		newEmail, 
+		constants.OtpTypes.RegisterCusEmail,
+	)
+	if reqErr != nil {
+		return reqErr
+	}
+
+	err = media.SendEmailVerification(newEmail, cus.FirstName, *otp)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	return nil
 }
 
 func GetCustomerData(
