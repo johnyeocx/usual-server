@@ -13,11 +13,12 @@ func InsertInvoice(sqlDB *sql.DB, data map[string]interface{}) (error) {
 	i := db.InvoiceDB{DB: sqlDB}
 	
 	if (invoice.SubStripeID.Valid) {
-		sub, _ := i.GetSubFromStripeID(invoice.SubStripeID.String)
-		// if err != nil {
-		// 	return err
-		// }
-		invoice.SubID = &sub.ID
+		sub, err := i.GetSubFromStripeID(invoice.SubStripeID.String)
+		if err != nil {
+			return err
+		}
+		invoice.SubID = sub.ID
+		invoice.CardID = sub.CardID
 	}
 	
 

@@ -240,7 +240,7 @@ func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription,
 		b.name, b.business_id,
 		p.product_id, p.name, p.description, pc.title,
 		sp.plan_id, sp.recurring_interval, sp.recurring_interval_count, sp.unit_amount, sp.currency,
-		i.invoice_id, i.created, i.status, i.total, i.invoice_url,
+		i.invoice_id, i.created, i.status, i.total, i.invoice_url, i.card_id,
 		ROW_NUMBER() OVER 
 		(PARTITION BY s.sub_id ORDER BY i.created DESC) as rank
 		FROM customer as c 
@@ -280,7 +280,7 @@ func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription,
 			&sub.BusinessName, &sub.BusinessID,
 			&product.ProductID, &product.Name, &product.Description, &product.CatTitle,
 			&plan.PlanID, &plan.RecurringDuration.Interval, &plan.RecurringDuration.IntervalCount, &plan.UnitAmount, &plan.Currency,
-			&invoice.ID, &invoice.Created, &invoice.Status, &invoice.Total, &invoice.InvoiceURL, &rank,
+			&invoice.ID, &invoice.Created, &invoice.Status, &invoice.Total, &invoice.InvoiceURL, &invoice.CardID, &rank,
 		); err != nil {
 			return nil, err
 		}
@@ -328,16 +328,10 @@ func (c *CustomerDB) GetCustomerInvoices(cusId int) ([]models.Invoice, error) {
 	query := `
 	SELECT 
 	i.invoice_id, i.paid, i.attempted, i.status, i.total, i.created, i.invoice_url, 
-	s.sub_id, s.card_id
+	i.sub_id, i.card_id
 	from invoice as i
 	JOIN customer as c ON i.stripe_cus_id=c.stripe_id
-	JOIN subscription as s on i.sub_id=s.sub_id
-	JOIN customer_card as cc on cc.card_id=s.card_id
-	JOIN subscription_plan as sp on i.stripe_price_id=sp.stripe_price_id
-	JOIN product as p on p.product_id=sp.product_id
-	JOIN business as b on b.business_id=p.business_id
 	
-
 	WHERE c.customer_id=$1
 	ORDER BY created DESC
 	LIMIT 100
@@ -406,13 +400,12 @@ func (c *CustomerDB) GetSubInvoices(
 	query := fmt.Sprintf(`
 	SELECT 
 	i.invoice_id, i.paid, i.attempted, i.status, i.total, i.created, i.invoice_url, 
-	i.sub_id, cc.card_id
+	i.sub_id, i.card_id
 	FROM customer as c 
 	JOIN subscription as s on s.customer_id=c.customer_id
 	JOIN subscription_plan as sp on sp.plan_id=s.plan_id
 	JOIN product as p on p.product_id=sp.product_id
 	JOIN invoice as i ON i.sub_id=s.sub_id
-	JOIN customer_card as cc on cc.card_id=s.card_id
 	WHERE c.customer_id=$1 AND p.product_id=$2
 	ORDER BY i.created DESC
 	LIMIT %d

@@ -269,6 +269,61 @@ func CancelSubscription(
 	return &expires, nil
 }
 
+func ChangeSubDefaultCard(
+	sqlDB *sql.DB,
+	cusId int,
+	subId int,
+	cardId int,
+) ( *models.RequestError) {
+	s := db.SubscriptionDB{DB: sqlDB}
+	c := db.CustomerDB{DB: sqlDB}
+
+	// 1. check if cus owns sub
+	sub, _, _, err := s.CusOwnsSub(cusId, subId)
+	if err != nil && err != sql.ErrNoRows {
+		return  &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	
+	if err == sql.ErrNoRows {
+		return  &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	// 2. get card stripe id
+	_, cardStripeId, err :=c.GetCustomerAndCardStripeId(cusId, cardId)
+	if err != nil {
+		return  &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+
+	// 2. change stripe default
+	err = my_stripe.ChangeSubDefaultCard(sub.StripeSubID, *cardStripeId)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// // 3. update sql
+	err = s.UpdateSubCardID(subId, cardId)
+	if err != nil {
+		return  &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	return nil
+}
+
+
 func GetNextBillingDate(
 	recurring models.TimeFrame, 
 	lastInvoiceDate time.Time,

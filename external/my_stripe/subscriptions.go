@@ -99,5 +99,17 @@ func CancelSubscription(subId string) (error) {
 	return err
 }
 
+func ChangeSubDefaultCard(subId string, cardId string) (error) {
+	stripe.Key = stripeSecretKey()
+	params := stripe.SubscriptionParams{
+		DefaultPaymentMethod: stripe.String(cardId),
+	}
+
+	_, err := subscription.Update(subId, &params)
+
+	return err
+}
+
+
 
 

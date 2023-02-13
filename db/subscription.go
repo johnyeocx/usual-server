@@ -178,3 +178,9 @@ func (s *SubscriptionDB) DeleteSubscription(subId int) (error) {
 	_, err := s.DB.Exec(stmt, subId)
 	return err
 }
+
+func (s *SubscriptionDB) UpdateSubCardID(subId int, cardId int) (error) {
+	stmt := `UPDATE subscription SET card_id=$1 WHERE sub_id=$2`
+	_, err := s.DB.Exec(stmt, cardId, subId)
+	return err
+}

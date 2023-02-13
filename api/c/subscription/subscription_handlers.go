@@ -17,7 +17,9 @@ func Routes(subRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) 
 
 	subRouter.POST("create", CreateSubscriptionHandler(sqlDB))
 	subRouter.PATCH("resume", ResumeSubscriptionHandler(sqlDB))
-
+	
+	subRouter.PATCH("default_card", ChangeSubDefaultCardHandler(sqlDB))
+	
 	subRouter.DELETE("cancel/:subId", CancelSubscriptionHandler(sqlDB))
 
 }
@@ -50,7 +52,6 @@ func getSubscriptionDataHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, res)
 	}
 }
-
 
 func CreateSubscriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
@@ -143,5 +144,36 @@ func CancelSubscriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		c.JSON(200, map[string]interface{} {
 			"expires": expires,
 		})
+	}
+}
+
+func ChangeSubDefaultCardHandler(sqlDB *sql.DB) gin.HandlerFunc {
+	return func (c *gin.Context) {
+		
+		// GET CUSTOMER ID
+		customerId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+			return
+		}
+
+		reqBody := struct {
+			SubID	int `json:"sub_id"`
+			CardID int `json:"card_id"`
+		}{}
+		err = c.BindJSON(&reqBody)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, err)
+			return
+		}
+
+		reqErr := ChangeSubDefaultCard(sqlDB, *customerId, reqBody.SubID, reqBody.CardID)
+		if reqErr != nil {
+			log.Println("Failed to cancel subscription: ", reqErr.Err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
+
+		c.JSON(200, nil)
 	}
 }

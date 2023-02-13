@@ -49,12 +49,10 @@ func stripeWebhookHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 		if event.Type == "invoice.payment_failed" {
 
-			
-
 			// REST
 			err := InsertInvoice(sqlDB, event.Data.Object)
 			if err != nil {
-				log.Println("Failed to insert invoice paid:", err)
+				log.Println("Failed to insert invoice payment failed:", err)
 				c.JSON(http.StatusBadGateway, err)
 				return
 			} else {
