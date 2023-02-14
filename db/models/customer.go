@@ -36,6 +36,7 @@ type Invoice struct {
 	InStripeID				string 			`json:"stripe_in_id"`
 	CusStripeID				string 			`json:"stripe_cus_id"`
 	SubStripeID				JsonNullString 	`json:"stripe_sub_id"`
+	PMStripeID				string 			`json:"stripe_pm_id"`
 	PriceStripeID			string			`json:"stripe_price_id"`
 	ProdStripeID			string			`json:"stripe_prod_id"`
 	Paid					bool 			`json:"paid"`

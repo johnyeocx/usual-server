@@ -13,6 +13,7 @@ import (
 )
 
 
+
 func GetSubscriptionData(
 	sqlDB *sql.DB,
 	cusId int,
@@ -111,6 +112,7 @@ func CreateSubscription(
 		lastIn.Created = time.Unix(stripeIn.Created, 0)
 		lastIn.InvoiceURL = stripeIn.HostedInvoiceURL
 		lastIn.Status = string(stripeIn.Status)
+		lastIn.PaymentIntentStatus = string(stripeSub.LatestInvoice.PaymentIntent.Status)
 	}
 	sub := models.Subscription{
 		StripeSubID: stripeSub.ID,
@@ -134,6 +136,65 @@ func CreateSubscription(
 		Sub: sub,
 		Status: stripeSub.LatestInvoice.PaymentIntent.Status,
 		PaymentIntent: stripeSub.LatestInvoice.PaymentIntent,
+	}, nil
+}
+
+func ResolvePaymentIntent(
+	sqlDB *sql.DB,
+	cusId int,
+	cardId int,
+	subId int,
+) (map[string]interface{}, *models.RequestError) {
+
+	// Get card
+	c := db.CustomerDB{DB: sqlDB}
+	s := db.SubscriptionDB{DB: sqlDB}
+	i := db.InvoiceDB{DB: sqlDB}
+
+	card, err := c.GetCusCard(cusId, cardId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	sub, _, _, err := s.CusOwnsSub(cusId, subId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+
+	stripeSub, paymentIntent, err := my_stripe.UpdateSubDefaultCardAndConfirm(sub.StripeSubID, card.StripeID)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	
+	err = s.UpdateSubCardID(subId, cardId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	err = i.UpdateInvoiceCardIDByStripeID(stripeSub.LatestInvoice.ID, cardId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+		
+	}
+
+	return map[string]interface{}{
+		"payment_method_id": card.StripeID,
+		"payment_intent": paymentIntent,
 	}, nil
 }
 
@@ -219,12 +280,10 @@ func CancelSubscription(
 	sqlDB *sql.DB,
 	cusId int,
 	subId int,
-) (*time.Time, *models.RequestError) {
+) (map[string]interface{}, *models.RequestError) {
 	s := db.SubscriptionDB{DB: sqlDB}
 
 	// 1. check if cus owns sub
-	fmt.Println(subId)
-	fmt.Println("1. checking if cus owns sub")
 	sub, plan, lastInvoice, err := s.CusOwnsSub(cusId, subId)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, &models.RequestError{
@@ -240,7 +299,20 @@ func CancelSubscription(
 		}
 	}
 
-	fmt.Println("1. deleting sub from stripe")
+	// 2. Delete if only one payment
+	deleted, err := DeleteSubIfNoPayments(sqlDB, subId, sub.StripeSubID)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	
+	if deleted {
+		return map[string]interface{}{
+			"deleted": true,
+		}, nil
+	}
 
 	// 2. delete from stripe
 	err = my_stripe.CancelSubscription(sub.StripeSubID)
@@ -264,61 +336,33 @@ func CancelSubscription(
 		}
 	}
 
-	fmt.Println("Made it here:", expires)
-
-	return &expires, nil
+	return map[string]interface{}{
+		"expires": expires,
+	}, nil
 }
 
-func DeleteSubscription(
-	sqlDB *sql.DB,
-	cusId int,
-	subId int,
-) ( *models.RequestError) {
+
+func DeleteSubIfNoPayments(sqlDB *sql.DB, subId int, stripeSubId string) (bool, error) {
 	s := db.SubscriptionDB{DB: sqlDB}
-	c := db.CustomerDB{DB: sqlDB}
 
-	// 1. check if cus owns sub
-	_, _, _, err := s.CusOwnsSub(cusId, subId)
-	if err != nil && err != sql.ErrNoRows {
-		return  &models.RequestError{
-			Err: err,
-			StatusCode: http.StatusBadGateway,
-		}
-	}
-	
-	if err == sql.ErrNoRows {
-		return  &models.RequestError{
-			Err: err,
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-
-	// 2. check if sub has > 1 invoice that passed
-	invoices, err := c.CusHasPaidSubBefore(cusId, subId)
-	if err != nil && err != sql.ErrNoRows {
-		return  &models.RequestError{
-			Err: err,
-			StatusCode: http.StatusBadGateway,
-		}
-	}
-
-	if len(invoices) > 0 {
-		return  &models.RequestError{
-			Err: err,
-			StatusCode: http.StatusUnauthorized,
-		}	
-	}
-
-	
-	// 3. update sql
-	err = s.DeleteSubscriptionAndInvoices(subId)
+	invoices, err := s.GetSubInvoicesFromSubID(subId, 10)
 	if err != nil {
-		return  &models.RequestError{
-			Err: err,
-			StatusCode: http.StatusBadGateway,
-		}
+		return false, err
 	}
-	return nil
+
+	
+	if len(invoices) == 1 && invoices[0].PaymentIntentStatus == "payment_failed" {
+		err := s.DeleteSubscriptionAndInvoices(subId)
+
+		if err != nil {
+			return false, err
+		}
+		
+		err = my_stripe.CancelSubscription(stripeSubId)
+		return true, err
+	}
+	
+	return false, nil
 }
 
 func ChangeSubDefaultCard(
@@ -374,8 +418,6 @@ func ChangeSubDefaultCard(
 	}
 	return nil
 }
-
-
 
 func GetNextBillingDate(
 	recurring models.TimeFrame, 

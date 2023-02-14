@@ -174,8 +174,6 @@ func VerifyCustomerRegEmail(
 	}, nil
 }
 
-
-
 func sendRegEmailOTP(
 	sqlDB *sql.DB,
 	newEmail string,

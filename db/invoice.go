@@ -47,3 +47,9 @@ func (i *InvoiceDB) InsertInvoice (
 
 	return err
 }
+
+func (i *InvoiceDB) UpdateInvoiceCardIDByStripeID(inStripeID string, cardId int) (error) {
+	stmt := `UPDATE invoice SET card_id=$1 WHERE stripe_in_id=$2`
+	_, err := i.DB.Exec(stmt, cardId, inStripeID)
+	return err
+}

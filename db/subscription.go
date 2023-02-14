@@ -15,6 +15,8 @@ type SubscriptionDB struct {
 
 
 
+
+
 func (s *SubscriptionDB) GetCreateSubData(
 	productId int,
 )(*models.SubscriptionProduct, *string, error) {
@@ -239,4 +241,39 @@ func (s *SubscriptionDB) UpdateSubCardID(subId int, cardId int) (error) {
 	stmt := `UPDATE subscription SET card_id=$1 WHERE sub_id=$2`
 	_, err := s.DB.Exec(stmt, cardId, subId)
 	return err
+}
+
+func (s *SubscriptionDB) GetSubInvoicesFromSubID(
+	subId int, 
+	limit int,
+) ([]models.Invoice, error) {
+	query := fmt.Sprintf(`
+	SELECT 
+	i.invoice_id, i.paid, i.attempted, i.status, i.total, i.created, i.invoice_url, 
+	i.sub_id, i.card_id, i.payment_intent_status
+	FROM invoice as i WHERE i.sub_id=$1 LIMIT %d
+	`, limit)
+
+
+	rows, err := s.DB.Query(query, subId)
+	if err != nil {
+		return nil, err
+	}
+
+	invoices := []models.Invoice{}
+	for rows.Next() {
+		var in models.Invoice
+		in.Subscription = &models.Subscription{}
+		in.CardInfo = &models.CardInfo{}
+		if err := rows.Scan(
+			&in.ID, &in.Paid, &in.Attempted, &in.Status, &in.Total, &in.Created, &in.InvoiceURL,
+			&in.SubID,
+			&in.CardID, &in.PaymentIntentStatus,
+		); err != nil {
+			return nil, err
+		}
+		invoices = append(invoices, in)
+	}
+
+	return invoices, nil
 }

@@ -35,7 +35,7 @@ func stripeWebhookHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}	
 
 		if event.Type == "invoice.paid" {
-			err := InsertInvoice(sqlDB, event.Data.Object, "succeeded")
+			_, err := InsertInvoice(sqlDB, event.Data.Object, "succeeded")
 			if err != nil {
 				log.Println("Failed to insert invoice paid:", err)
 				c.JSON(http.StatusBadGateway, err)
@@ -47,7 +47,7 @@ func stripeWebhookHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 
 		if event.Type == "invoice.payment_action_required" {
-			err := InsertInvoice(sqlDB, event.Data.Object, "requires_action")
+			_, err := InsertInvoice(sqlDB, event.Data.Object, "requires_action")
 			if err != nil {
 				log.Println("Failed to insert invoice action required:", err)
 				c.JSON(http.StatusBadGateway, err)
@@ -59,17 +59,23 @@ func stripeWebhookHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 
 		if event.Type == "invoice.payment_failed" {
-			// REST
-			err := InsertInvoice(sqlDB, event.Data.Object, "payment_failed")
+			_, err := InsertInvoice(sqlDB, event.Data.Object, "payment_failed")
+
 			if err != nil {
 				log.Println("Failed to insert invoice payment failed:", err)
 				c.JSON(http.StatusBadGateway, err)
 				return
-			} else {
-				c.JSON(200, nil)
-				return
 			}
-			// SEND NOTIFICATION TO CUSTOMER_ID
+
+			// err = DeleteSubIfFailedFirst(sqlDB, *invoice)
+			// if err != nil {
+			// 	log.Println("Failed to check and delete sub if failed first:", err)
+			// 	c.JSON(http.StatusBadGateway, err)
+			// 	return
+			// } else {
+			// 	c.JSON(200, nil)
+			// 	return
+			// }
 		}
 	}
 }

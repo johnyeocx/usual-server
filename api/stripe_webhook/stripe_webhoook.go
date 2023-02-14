@@ -8,20 +8,16 @@ import (
 	"github.com/johnyeocx/usual/server/db/models"
 )
 
-func InsertInvoice(sqlDB *sql.DB, data map[string]interface{}, paymentStatus string) (error) {
+func InsertInvoice(sqlDB *sql.DB, data map[string]interface{}, paymentStatus string) (*models.Invoice, error) {
 	invoice := ParseInvoicePaid(data)
 	
 	invoice.PaymentIntentStatus = paymentStatus
-	
-	// if invoice.payment_failed, and sub only has one invoice, delete sub?
-
 	i := db.InvoiceDB{DB: sqlDB}
 
-	
 	if (invoice.SubStripeID.Valid) {
 		sub, err := i.GetSubFromStripeID(invoice.SubStripeID.String)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		invoice.SubID = sub.ID
 		invoice.CardID = sub.CardID
@@ -29,7 +25,7 @@ func InsertInvoice(sqlDB *sql.DB, data map[string]interface{}, paymentStatus str
 	
 	
 	err := i.InsertInvoice(invoice)
-	return err
+	return invoice, err
 }
 
 func ParseInvoicePaid(data map[string]interface{})(*models.Invoice) {
@@ -72,6 +68,7 @@ func ParseInvoicePaid(data map[string]interface{})(*models.Invoice) {
 		InStripeID: data["id"].(string),
 		CusStripeID: data["customer"].(string),
 		SubStripeID: subStripeId,
+		PMStripeID: data["payment_intent"].(string),
 		PriceStripeID: priceStripeId.(string),
 		ProdStripeID: prodStripeId.(string),
 		Paid: data["paid"].(bool),

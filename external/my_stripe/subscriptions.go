@@ -5,6 +5,7 @@ import (
 
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/stripe/stripe-go/v74"
+	"github.com/stripe/stripe-go/v74/paymentintent"
 	"github.com/stripe/stripe-go/v74/subscription"
 )
 
@@ -39,16 +40,36 @@ func CreateSubscription(
 
 	
 	s, err := subscription.New(params);
-	// piParams := &stripe.PaymentIntentConfirmParams{
-		
-	// }
-	// p, _ := paymentintent.Confirm(s.LatestInvoice.PaymentIntent.ID, piParams)
-	
-	// log.Println("Next Action:", p.NextAction)
 	if err != nil {
 		return nil, err
 	}
 	return s, nil
+}
+
+func UpdateSubDefaultCardAndConfirm(
+	subId string, 
+	cardId string,
+) (*stripe.Subscription, *stripe.PaymentIntent, error)  {
+	stripe.Key = stripeSecretKey()
+	
+	params := &stripe.SubscriptionParams{
+		DefaultPaymentMethod: stripe.String(cardId),
+	}
+	params.AddExpand("latest_invoice.payment_intent")
+
+	s, err := subscription.Update(subId, params)
+	if err != nil {
+		return nil,nil,  err
+	}
+
+	p, err := paymentintent.Confirm(s.LatestInvoice.PaymentIntent.ID, &stripe.PaymentIntentConfirmParams{
+		PaymentMethod: &cardId,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return s, p, nil
 }
 
 
@@ -98,10 +119,7 @@ func ResumeSubscription(
 func CancelSubscription(subId string) (error) {
 	stripe.Key = stripeSecretKey()
 
-	_, err := subscription.Cancel(
-		subId,
-		nil,
-	)
+	_, err := subscription.Cancel(subId, nil)
 
 	return err
 }
