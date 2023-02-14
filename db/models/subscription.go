@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/stripe/stripe-go/v74"
+)
 
 type Subscription struct {
 	ID 			 int 					`json:"sub_id"`
@@ -20,4 +24,10 @@ type Subscription struct {
 	SubProduct	 	*SubscriptionProduct 	`json:"sub_product"`
 
 	LastInvoice		*Invoice			`json:"last_invoice"`
+}
+
+type CreateSubReturn struct {
+	Sub 			Subscription `json:"sub"`
+	Status			stripe.PaymentIntentStatus 		`json:"status"`
+	PaymentIntent 	*stripe.PaymentIntent `json:"payment_intent"`
 }

@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -20,6 +21,7 @@ func Routes(subRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) 
 	
 	subRouter.PATCH("default_card", ChangeSubDefaultCardHandler(sqlDB))
 	
+	subRouter.DELETE("delete/:subId", DeleteSubscriptionHandler(sqlDB))
 	subRouter.DELETE("cancel/:subId", CancelSubscriptionHandler(sqlDB))
 
 }
@@ -53,6 +55,35 @@ func getSubscriptionDataHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
+func DeleteSubscriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
+	return func (c *gin.Context) {
+
+		// GET CUSTOMER ID
+		customerId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+			return
+		}
+
+		subId, _ := c.Params.Get("subId")
+		subIdInt, err := strconv.Atoi(subId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, errors.New("invalid sub id provided"))
+			return
+		}
+		
+		reqErr := DeleteSubscription(sqlDB, *customerId, subIdInt)
+		if reqErr != nil {
+			log.Println("Failed to delete subscription:", reqErr.Err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
+}
+
+
 func CreateSubscriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 
@@ -64,7 +95,7 @@ func CreateSubscriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 
 		reqBody := struct {
-			ProductIDs		[]int	`json:"product_ids"`
+			ProductID		int		`json:"product_id"`
 			CardID			int		`json:"card_id"`
 		}{}
 
@@ -74,13 +105,14 @@ func CreateSubscriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 		
-		subs, reqErr := CreateSubscription(sqlDB, *customerId, reqBody.CardID, reqBody.ProductIDs)
+		res, reqErr := CreateSubscription(sqlDB, *customerId, reqBody.CardID, reqBody.ProductID)
 		if reqErr != nil {
+			log.Println("Failed to create subscription:", reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)
 			return
 		}
 
-		c.JSON(200, subs)
+		c.JSON(200, res)
 	}
 }
 

@@ -250,7 +250,7 @@ func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription,
 		JOIN product as p ON p.product_id=sp.product_id
 		JOIN product_category as pc ON pc.category_id=p.category_id
 		JOIN business as b ON b.business_id=p.business_id
-		GROUP BY sp.plan_id, p.product_id, s.sub_id, i.invoice_id, c.customer_id, pc.category_id, b.business_id
+		GROUP BY sp.plan_id, p.product_id, s.sub_id, i.invoice_id, i.stripe_in_id, c.customer_id, pc.category_id, b.business_id
 	)
 	
 	SELECT * FROM ranked_table as r
@@ -390,6 +390,44 @@ func (c *CustomerDB) GetTotalSpent(
 	}
 
 	return &total, nil
+}
+
+func (c *CustomerDB) CusHasPaidSubBefore(
+	cusId int,
+	subId int, 
+) ([]models.Invoice, error) {
+	query := `
+	SELECT 
+	i.invoice_id, i.paid, i.attempted, i.status, i.total, i.created, i.invoice_url, 
+	i.sub_id, i.card_id
+	FROM customer as c 
+	JOIN subscription as s on s.customer_id=c.customer_id
+	JOIN invoice as i ON i.sub_id=s.sub_id
+	WHERE c.customer_id=$1 AND i.sub_id=$2 AND i.status='paid'
+	ORDER BY i.created DESC
+	`
+
+	rows, err := c.DB.Query(query, cusId, subId)
+	if err != nil {
+		return nil, err
+	}
+
+	invoices := []models.Invoice{}
+	for rows.Next() {
+		var in models.Invoice
+		in.Subscription = &models.Subscription{}
+		in.CardInfo = &models.CardInfo{}
+		if err := rows.Scan(
+			&in.ID, &in.Paid, &in.Attempted, &in.Status, &in.Total, &in.Created, &in.InvoiceURL,
+			&in.SubID,
+			&in.CardID,
+		); err != nil {
+			return nil, err
+		}
+		invoices = append(invoices, in)
+	}
+
+	return invoices, nil
 }
 
 func (c *CustomerDB) GetSubInvoices(

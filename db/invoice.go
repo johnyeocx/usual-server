@@ -24,6 +24,7 @@ func (i *InvoiceDB) GetSubFromStripeID (
 	return &sub, nil
 }
 
+
 func (i *InvoiceDB) InsertInvoice (
 	invoice *models.Invoice,
 ) (error) {
@@ -31,12 +32,17 @@ func (i *InvoiceDB) InsertInvoice (
 	_, err := i.DB.Exec(`INSERT into invoice 
 		(
 			stripe_in_id, stripe_cus_id, stripe_sub_id, stripe_price_id, stripe_prod_id,
-			paid, status, attempted, total, created, invoice_url, app_fee_amt, default_payment_method, sub_id, card_id
+			paid, status, attempted, total, created, invoice_url, 
+			app_fee_amt, default_payment_method, sub_id, card_id, payment_intent_status
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) 
+		ON CONFLICT (stripe_in_id) DO UPDATE 
+		SET paid=$6, status = $7, payment_intent_status=$16
+		` , 
 		invoice.InStripeID, invoice.CusStripeID, invoice.SubStripeID, invoice.PriceStripeID,
 		invoice.ProdStripeID, invoice.Paid, invoice.Status, invoice.Attempted, invoice.Total, invoice.Created, 
-		invoice.InvoiceURL, invoice.ApplicationFeeAmt, invoice.DefaultPaymentMethod, invoice.SubID, invoice.CardID,
+		invoice.InvoiceURL, invoice.ApplicationFeeAmt, invoice.DefaultPaymentMethod, 
+		invoice.SubID, invoice.CardID, invoice.PaymentIntentStatus,
 	)
 
 	return err

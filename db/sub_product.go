@@ -99,7 +99,6 @@ func (s *BusinessDB) GetBusinessProductCategories(
 }
 
 
-
 func (s *BusinessDB) GetSubProductsFromIds(
 	productIds []int,
 )(*[]models.SubscriptionProduct, error) {

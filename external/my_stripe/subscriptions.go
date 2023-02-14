@@ -16,7 +16,7 @@ func CreateSubscription(
 	businessId string,
 	cardId		string,
 	subProduct models.SubscriptionProduct,
-) (*string, error) {
+) (*stripe.Subscription, error) {
 	stripe.Key = stripeSecretKey()
 
 	// for each item, create subitem params
@@ -36,12 +36,19 @@ func CreateSubscription(
 		CollectionMethod: stripe.String("charge_automatically"),
 	};
 	params.AddExpand("latest_invoice.payment_intent")
+
 	
 	s, err := subscription.New(params);
+	// piParams := &stripe.PaymentIntentConfirmParams{
+		
+	// }
+	// p, _ := paymentintent.Confirm(s.LatestInvoice.PaymentIntent.ID, piParams)
+	
+	// log.Println("Next Action:", p.NextAction)
 	if err != nil {
 		return nil, err
 	}
-	return &s.ID, nil
+	return s, nil
 }
 
 

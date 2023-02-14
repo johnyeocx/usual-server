@@ -58,16 +58,15 @@ func CreateSubscription(
 	sqlDB *sql.DB, 
 	customerId int,
 	cardId int,
-	productIds []int, 
-) ([]models.Subscription, *models.RequestError) {
-
+	productId int, 
+) (*models.CreateSubReturn, *models.RequestError) {
+	
 	// Get list of products + subplans
-	b := db.BusinessDB{DB: sqlDB}
+	s := db.SubscriptionDB{DB: sqlDB}
 	c := db.CustomerDB{DB: sqlDB}
 
 	// make sure customer is not already subscribed
-	err := c.CheckCusSubscribed(customerId, productIds)
-	
+	err := c.CheckCusSubscribed(customerId, []int{productId})
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
@@ -75,7 +74,7 @@ func CreateSubscription(
 		}
 	}
 
-	subProducts, err := b.GetSubProductsFromIds(productIds)
+	subProduct, stripeBusId, err := s.GetCreateSubData(productId)
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
@@ -92,49 +91,50 @@ func CreateSubscription(
 		}
 	}
 
-	subscriptions := []models.Subscription{}
-	now := time.Now()
-	// today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-
-	// 3. INSERT INTO STRIPE
-	for i := 0; i < len(*subProducts); i++ {
-		stripeBusinessId, err := b.GetBusinessStripeID((*subProducts)[i].Product.BusinessID)
-		if err != nil {
-			return nil, &models.RequestError{
-				Err: err,
-				StatusCode: http.StatusBadGateway,
-			}
-		}	
-
-		stripeSubId, err := my_stripe.CreateSubscription(
-			*cusStripeId, *stripeBusinessId, *cardStripeId, (*subProducts)[i],
-		)
-		if err != nil {
-			return nil, &models.RequestError{
-				Err: err,
-				StatusCode: http.StatusBadGateway,
-			}
-		}
-		subscription := models.Subscription{
-			StripeSubID: *stripeSubId,
-			CustomerID: customerId,
-			PlanID: (*subProducts)[i].SubPlan.PlanID,
-			StartDate: now,
-			CardID: cardId,
-		}
-		subscriptions = append(subscriptions, subscription)
-	}
 	
-	// 4. INSERT INTO DB
-	s := db.SubscriptionDB{DB: sqlDB}
-	returnedSubs, err := s.InsertSubscriptions(&subscriptions)
+	stripeSub, err := my_stripe.CreateSubscription(
+		*cusStripeId, *stripeBusId, *cardStripeId, *subProduct,
+	)
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
 			StatusCode: http.StatusBadGateway,
 		}
 	}
-	return returnedSubs, nil
+
+	stripeIn := stripeSub.LatestInvoice
+	lastIn := models.Invoice{}
+	now := time.Now()
+	if stripeIn != nil {
+		lastIn.CardID = cardId
+		lastIn.Total = int(stripeIn.Total)
+		lastIn.Created = time.Unix(stripeIn.Created, 0)
+		lastIn.InvoiceURL = stripeIn.HostedInvoiceURL
+		lastIn.Status = string(stripeIn.Status)
+	}
+	sub := models.Subscription{
+		StripeSubID: stripeSub.ID,
+		CustomerID: customerId,
+		PlanID: subProduct.SubPlan.PlanID,
+		StartDate: now,
+		CardID: cardId,
+		LastInvoice: &lastIn,
+	}
+	
+	// // 4. INSERT INTO DB
+	returnedSubs, err := s.InsertSubscriptions(&[]models.Subscription{sub})
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	sub.ID = returnedSubs[0].ID
+	return &models.CreateSubReturn{
+		Sub: sub,
+		Status: stripeSub.LatestInvoice.PaymentIntent.Status,
+		PaymentIntent: stripeSub.LatestInvoice.PaymentIntent,
+	}, nil
 }
 
 func ResumeSubscription(
@@ -269,6 +269,58 @@ func CancelSubscription(
 	return &expires, nil
 }
 
+func DeleteSubscription(
+	sqlDB *sql.DB,
+	cusId int,
+	subId int,
+) ( *models.RequestError) {
+	s := db.SubscriptionDB{DB: sqlDB}
+	c := db.CustomerDB{DB: sqlDB}
+
+	// 1. check if cus owns sub
+	_, _, _, err := s.CusOwnsSub(cusId, subId)
+	if err != nil && err != sql.ErrNoRows {
+		return  &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	
+	if err == sql.ErrNoRows {
+		return  &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	// 2. check if sub has > 1 invoice that passed
+	invoices, err := c.CusHasPaidSubBefore(cusId, subId)
+	if err != nil && err != sql.ErrNoRows {
+		return  &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	if len(invoices) > 0 {
+		return  &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusUnauthorized,
+		}	
+	}
+
+	
+	// 3. update sql
+	err = s.DeleteSubscriptionAndInvoices(subId)
+	if err != nil {
+		return  &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	return nil
+}
+
 func ChangeSubDefaultCard(
 	sqlDB *sql.DB,
 	cusId int,
@@ -322,6 +374,7 @@ func ChangeSubDefaultCard(
 	}
 	return nil
 }
+
 
 
 func GetNextBillingDate(

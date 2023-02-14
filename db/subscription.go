@@ -14,6 +14,50 @@ type SubscriptionDB struct {
 }
 
 
+
+func (s *SubscriptionDB) GetCreateSubData(
+	productId int,
+)(*models.SubscriptionProduct, *string, error) {
+	selectStatement := `SELECT 
+	p.product_id, p.business_id, p.name, p.description, p.category_id, p.stripe_product_id,
+	sp.plan_id, sp.currency, sp.recurring_interval, sp.recurring_interval_count, sp.unit_amount, sp.stripe_price_id, b.stripe_id
+	FROM product as p
+	JOIN subscription_plan as sp on p.product_id = sp.product_id
+	JOIN business as b on b.business_id=p.business_id
+	WHERE p.product_id=$1`
+
+	var product models.Product
+	var subPlan models.SubscriptionPlan
+	var stripeBusId string
+	err := s.DB.QueryRow(selectStatement, productId).Scan(
+		&product.ProductID,
+		&product.BusinessID,
+		&product.Name,
+		&product.Description,
+		&product.CategoryID,
+		&product.StripeProductID,
+
+		&subPlan.PlanID,
+		&subPlan.Currency,
+		&subPlan.RecurringDuration.Interval,
+		&subPlan.RecurringDuration.IntervalCount,
+		&subPlan.UnitAmount,
+		&subPlan.StripePriceID,
+		&stripeBusId,
+	)
+
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	subProduct := models.SubscriptionProduct{
+		Product: product,
+		SubPlan: subPlan,
+	}
+	return &subProduct, &stripeBusId, nil
+}
+
+
 func (s *SubscriptionDB) GetCusResumeSubData(cusId int, subId int) (
 	map[string]interface{},
 	error,
@@ -84,7 +128,7 @@ func (s *SubscriptionDB) CusOwnsSub(cusId int, subId int) (
 	JOIN subscription as s on c.customer_id=s.customer_id
 	JOIN subscription_plan as sp on sp.plan_id=s.plan_id
 	JOIN product as p on sp.product_id=p.product_id
-	JOIN invoice as i on i.stripe_prod_id=p.stripe_product_id
+	LEFT JOIN invoice as i on i.sub_id=s.sub_id
 	WHERE c.customer_id=$1 AND s.sub_id=$2
 	ORDER BY i.created DESC 
 	LIMIT 1`
@@ -92,8 +136,8 @@ func (s *SubscriptionDB) CusOwnsSub(cusId int, subId int) (
 	var sub models.Subscription
 	subPlan := models.SubscriptionPlan{}
 	subPlan.RecurringDuration = models.TimeFrame{}
-	invoice := models.Invoice{}
-
+	
+	invoiceCreated := sql.NullTime{}
 	err := s.DB.QueryRow(query, cusId, subId).Scan(
 		&sub.StripeSubID,
 		&sub.StartDate,
@@ -101,8 +145,14 @@ func (s *SubscriptionDB) CusOwnsSub(cusId int, subId int) (
 		&sub.CardID,
 		&subPlan.RecurringDuration.Interval,
 		&subPlan.RecurringDuration.IntervalCount,
-		&invoice.Created,
+		&invoiceCreated,
 	)
+
+	var invoice models.Invoice
+	if invoiceCreated.Valid {
+		invoice.Created = invoiceCreated.Time
+	}
+	
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -172,10 +222,16 @@ func (s *SubscriptionDB) ResumeSubscription(subId int, cardId int, stripeSubId s
 	return err
 }
 
-func (s *SubscriptionDB) DeleteSubscription(subId int) (error) {
-	fmt.Println("Deleting sub id:", subId)
-	stmt := `DELETE from subscription WHERE sub_id=$1`
+func (s *SubscriptionDB) DeleteSubscriptionAndInvoices(subId int) (error) {
+	stmt := `DELETE FROM subscription WHERE sub_id=$1`
 	_, err := s.DB.Exec(stmt, subId)
+
+	if err != nil {
+		return err
+	}
+
+	stmt2 := `DELETE FROM invoice WHERE sub_id=$1`
+	_, err = s.DB.Exec(stmt2, subId)
 	return err
 }
 

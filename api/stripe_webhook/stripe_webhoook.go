@@ -8,9 +8,15 @@ import (
 	"github.com/johnyeocx/usual/server/db/models"
 )
 
-func InsertInvoice(sqlDB *sql.DB, data map[string]interface{}) (error) {
+func InsertInvoice(sqlDB *sql.DB, data map[string]interface{}, paymentStatus string) (error) {
 	invoice := ParseInvoicePaid(data)
+	
+	invoice.PaymentIntentStatus = paymentStatus
+	
+	// if invoice.payment_failed, and sub only has one invoice, delete sub?
+
 	i := db.InvoiceDB{DB: sqlDB}
+
 	
 	if (invoice.SubStripeID.Valid) {
 		sub, err := i.GetSubFromStripeID(invoice.SubStripeID.String)
@@ -21,7 +27,7 @@ func InsertInvoice(sqlDB *sql.DB, data map[string]interface{}) (error) {
 		invoice.CardID = sub.CardID
 	}
 	
-
+	
 	err := i.InsertInvoice(invoice)
 	return err
 }
