@@ -72,6 +72,23 @@ func UpdateSubDefaultCardAndConfirm(
 	return s, p, nil
 }
 
+func GetSubLastInvoicePaymentIntent(
+	pmId string, 
+) (*stripe.PaymentIntent, error)  {
+	stripe.Key = stripeSecretKey()
+
+
+	
+
+	pm, err := paymentintent.Get(pmId, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return pm, nil
+}
+
 
 func ResumeSubscription(
 	cusId string,

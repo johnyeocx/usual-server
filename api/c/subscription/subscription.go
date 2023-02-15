@@ -198,6 +198,36 @@ func ResolvePaymentIntent(
 	}, nil
 }
 
+func GetPaymentIntent(
+	sqlDB *sql.DB,
+	cusId int,
+	subId int,
+) (map[string]interface{}, *models.RequestError) {
+
+	// Get card
+	s := db.SubscriptionDB{DB: sqlDB}
+
+	_, _, lastIn, err := s.CusOwnsSub(cusId, subId)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+
+	paymentIntent, err := my_stripe.GetSubLastInvoicePaymentIntent(lastIn.PMIStripeID)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	return map[string]interface{}{
+		"payment_intent": paymentIntent,
+	}, nil
+}
+
 func ResumeSubscription(
 	sqlDB *sql.DB, 
 	customerId int,

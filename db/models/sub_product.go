@@ -38,7 +38,8 @@ type SubUsage struct {
 type InvoiceData struct {
 	CustomerID			int 			`json:"customer_id"`
 	CustomerStripeID	string 			`json:"stripe_cus_id"`
-	CustomerName		string 			`json:"customer_name"`
+	CusLastName			string 			`json:"cus_first_name"`
+	CusFirstName		string 			`json:"cus_last_name"`
 	InvoiceID			string			`json:"invoice_id"`
 	Total				int				`json:"total"`
 	InvoiceURL			string			`json:"invoice_url"`

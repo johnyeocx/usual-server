@@ -68,7 +68,7 @@ func ParseInvoicePaid(data map[string]interface{})(*models.Invoice) {
 		InStripeID: data["id"].(string),
 		CusStripeID: data["customer"].(string),
 		SubStripeID: subStripeId,
-		PMStripeID: data["payment_intent"].(string),
+		PMIStripeID: data["payment_intent"].(string),
 		PriceStripeID: priceStripeId.(string),
 		ProdStripeID: prodStripeId.(string),
 		Paid: data["paid"].(bool),

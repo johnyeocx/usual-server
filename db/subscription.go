@@ -125,7 +125,7 @@ func (s *SubscriptionDB) CusOwnsSub(cusId int, subId int) (
 ) {
 
 	query := `SELECT s.stripe_sub_id, s.start_date, s.cancelled, s.card_id,
-	sp.recurring_interval, sp.recurring_interval_count, i.created
+	sp.recurring_interval, sp.recurring_interval_count, i.created, i.stripe_pmi_id
 	from customer as c
 	JOIN subscription as s on c.customer_id=s.customer_id
 	JOIN subscription_plan as sp on sp.plan_id=s.plan_id
@@ -140,6 +140,7 @@ func (s *SubscriptionDB) CusOwnsSub(cusId int, subId int) (
 	subPlan.RecurringDuration = models.TimeFrame{}
 	
 	invoiceCreated := sql.NullTime{}
+	pmiStripeId := sql.NullString{}
 	err := s.DB.QueryRow(query, cusId, subId).Scan(
 		&sub.StripeSubID,
 		&sub.StartDate,
@@ -148,11 +149,15 @@ func (s *SubscriptionDB) CusOwnsSub(cusId int, subId int) (
 		&subPlan.RecurringDuration.Interval,
 		&subPlan.RecurringDuration.IntervalCount,
 		&invoiceCreated,
+		&pmiStripeId,
 	)
 
 	var invoice models.Invoice
 	if invoiceCreated.Valid {
 		invoice.Created = invoiceCreated.Time
+	}
+	if pmiStripeId.Valid {
+		invoice.PMIStripeID = pmiStripeId.String
 	}
 	
 	if err != nil {

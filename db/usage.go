@@ -79,7 +79,7 @@ func (u *UsageDB) GetCusUsagesOnBusiness(
 
 	query := `
 		SELECT 
-		c.uuid, c.name,
+		c.uuid, c.first_name, c.last_name
 		s.plan_id, 
 		su.title, su.sub_usage_id, su.unlimited, su.interval, su.amount,
 		p.product_id, p.name, 
@@ -119,7 +119,8 @@ func (u *UsageDB) GetCusUsagesOnBusiness(
 		var info models.UsageInfo
 		if err := rows.Scan(
 			&info.CusUUID,
-			&info.CusName,
+			&info.CusFirstName,
+			&info.CusLastName,
 			&info.PlanID,
 			&info.SubUsage.Title,
 			&info.SubUsage.ID,

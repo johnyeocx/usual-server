@@ -256,7 +256,7 @@ func (s *BusinessDB) GetSubProductInvoices(
 	// 	ON p.product_id=sp.product_id AND sp.plan_id=s.plan_id`
 	
 	stmt := `SELECT 
-	c.customer_id, c.stripe_id, c.name, i.invoice_id, i.total, i.invoice_url, i.status, i.attempted, i.app_fee_amt from 
+	c.customer_id, c.stripe_id, c.first_name, c.last_name, i.invoice_id, i.total, i.invoice_url, i.status, i.attempted, i.app_fee_amt from 
 	product as p JOIN invoice as i ON p.stripe_product_id=i.stripe_prod_id
 	JOIN customer as c on i.stripe_cus_id=c.stripe_id
 	WHERE p.product_id=$1;`
@@ -275,7 +275,8 @@ func (s *BusinessDB) GetSubProductInvoices(
         if err := rows.Scan(
 			&invoice.CustomerID,
 			&invoice.CustomerStripeID,
-			&invoice.CustomerName,
+			&invoice.CusFirstName,
+			&invoice.CusLastName,
 			&invoice.InvoiceID,
 			&invoice.Total,
 			&invoice.InvoiceURL,

@@ -33,16 +33,16 @@ func (i *InvoiceDB) InsertInvoice (
 		(
 			stripe_in_id, stripe_cus_id, stripe_sub_id, stripe_price_id, stripe_prod_id,
 			paid, status, attempted, total, created, invoice_url, 
-			app_fee_amt, default_payment_method, sub_id, card_id, payment_intent_status
+			app_fee_amt, default_payment_method, sub_id, card_id, payment_intent_status, stripe_pmi_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) 
 		ON CONFLICT (stripe_in_id) DO UPDATE 
 		SET paid=$6, status = $7, payment_intent_status=$16
 		` , 
-		invoice.InStripeID, invoice.CusStripeID, invoice.SubStripeID, invoice.PriceStripeID,
+		invoice.InStripeID, invoice.CusStripeID, invoice.SubStripeID, invoice.PriceStripeID, 
 		invoice.ProdStripeID, invoice.Paid, invoice.Status, invoice.Attempted, invoice.Total, invoice.Created, 
 		invoice.InvoiceURL, invoice.ApplicationFeeAmt, invoice.DefaultPaymentMethod, 
-		invoice.SubID, invoice.CardID, invoice.PaymentIntentStatus,
+		invoice.SubID, invoice.CardID, invoice.PaymentIntentStatus, invoice.PMIStripeID,
 	)
 
 	return err

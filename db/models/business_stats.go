@@ -3,7 +3,8 @@ package models
 import "time"
 
 type SubInfo struct {
-	CusName 			string 			`json:"customer_name"`
+	FirstName 			string 			`json:"first_name"`
+	LastName 			string 			`json:"last_name"`
 	ProductName			string 			`json:"product_name"`
 	ProductID			int 			`json:"product_id"`
 	Subscription		Subscription 	`json:"subscription"`
@@ -11,7 +12,8 @@ type SubInfo struct {
 
 type UsageInfo struct {
 	CusUUID 		string 		`json:"customer_uuid"`
-	CusName 		string 		`json:"customer_name"`
+	CusFirstName 		string 		`json:"cus_first_name"`
+	CusLastName 		string 		`json:"cus_last_name"`
 	Created 		time.Time	`json:"created"`
 
 	PlanID			int			`json:"plan_id"`

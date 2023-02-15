@@ -3,6 +3,7 @@ package subscription
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -16,9 +17,11 @@ import (
 
 func Routes(subRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
 	subRouter.GET("/:id", getSubscriptionDataHandler(sqlDB))
+	subRouter.GET("/payment_intent/:subId", GetPaymentIntentHandler(sqlDB))
 
 	subRouter.POST("create", CreateSubscriptionHandler(sqlDB))
 	subRouter.POST("resolve_payment_intent", ResolvePaymentIntentHandler(sqlDB))
+
 	subRouter.PATCH("resume", ResumeSubscriptionHandler(sqlDB))
 	
 	subRouter.PATCH("default_card", ChangeSubDefaultCardHandler(sqlDB))
@@ -177,6 +180,40 @@ func ChangeSubDefaultCardHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(200, nil)
+	}
+}
+
+func GetPaymentIntentHandler(sqlDB *sql.DB) gin.HandlerFunc {
+	return func (c * gin.Context) {
+		customerId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+			return
+		}
+
+		subId, _ := c.Params.Get("subId")
+		subIdInt, err := strconv.Atoi(subId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, errors.New("invalid sub id"))
+			return
+		}
+
+		res, reqErr := GetPaymentIntent(sqlDB, *customerId, subIdInt)
+		if reqErr != nil {
+			stripeErr := stripe.Error{}
+			err := json.Unmarshal([]byte(reqErr.Err.Error()), &stripeErr)
+			if err == nil {
+				log.Println("Stripe error: ", stripeErr.Code)
+				c.JSON(reqErr.StatusCode, stripeErr.Code)
+				return
+			}
+
+			log.Println("Failed to resolve payment intent:", reqErr.Err)
+			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
 	}
 }
 

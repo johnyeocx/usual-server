@@ -9,7 +9,7 @@ import (
 
 func (b *BusinessDB) GetBusinessSubs(businessId int) (*[]models.SubInfo, error) {
 	stmt := `
-	SELECT c.customer_id, c.name, p.product_id, p."name", 
+	SELECT c.customer_id, c.first_name, c.last_name, p.product_id, p."name", 
 	s.start_date, s.sub_id
 	FROM
 	business as b 
@@ -33,7 +33,8 @@ func (b *BusinessDB) GetBusinessSubs(businessId int) (*[]models.SubInfo, error) 
 		info.Subscription = models.Subscription{}
         if err := rows.Scan(
 			&info.Subscription.CustomerID,
-			&info.CusName,
+			&info.FirstName,
+			&info.LastName,
 			&info.ProductID,
 			&info.ProductName,
 			&info.Subscription.StartDate,
@@ -50,7 +51,7 @@ func (b *BusinessDB) GetBusinessSubs(businessId int) (*[]models.SubInfo, error) 
 
 func (b *BusinessDB) GetBusinessInvoices(businessId int, limit int) ([]models.InvoiceData, error) {
 	stmt := fmt.Sprintf(`SELECT 
-	c.customer_id, c.name, 
+	c.customer_id, c.first_name, c.last_name, 
 	i.invoice_id, i.total, i.invoice_url, i.status, i.attempted, i.app_fee_amt,
 	p.name, p.product_id
 	FROM business as b
@@ -75,7 +76,8 @@ func (b *BusinessDB) GetBusinessInvoices(businessId int, limit int) ([]models.In
 		
         if err := rows.Scan(
 			&invoice.CustomerID,
-			&invoice.CustomerName,
+			&invoice.CusFirstName,
+			&invoice.CusLastName,
 			&invoice.InvoiceID,
 			&invoice.Total,
 			&invoice.InvoiceURL,
@@ -97,7 +99,7 @@ func (b *BusinessDB) GetBusinessInvoices(businessId int, limit int) ([]models.In
 
 func (b *BusinessDB) GetBusinessUsages(businessId int, limit int) ([]models.UsageInfo, error) {
 	stmt := fmt.Sprintf(`SELECT 
-		c.uuid, c.name, 
+		c.uuid, c.first_name, c.last_name, 
 		cu.created, 
 		su.title, su.sub_usage_id, su.unlimited, su.interval, su.amount, 
 		p.product_id, p.name 
@@ -126,7 +128,8 @@ func (b *BusinessDB) GetBusinessUsages(businessId int, limit int) ([]models.Usag
 
         if err := rows.Scan(
 			&u.CusUUID,
-			&u.CusName,
+			&u.CusFirstName,
+			&u.CusLastName,
 			&u.Created,
 
 			&u.SubUsage.Title,
