@@ -18,6 +18,7 @@ func Routes(customerRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 	customerRouter.GET("data", getCustomerDataHandler(sqlDB))
 	customerRouter.GET("subs", getCusSubsAndInvoicesHandler(sqlDB))
 
+	customerRouter.POST("fcm_token", saveCustomerFCMToken(sqlDB))
 	customerRouter.POST("create", createCustomerHandler(sqlDB))
 	customerRouter.POST("verify_email", verifyCustomerEmailHandler(sqlDB, s3Sess))
 	customerRouter.POST("add_card", addCustomerCardHandler(sqlDB))
@@ -28,6 +29,40 @@ func Routes(customerRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 	customerRouter.PATCH("verify_email", verifyCusUpdateEmailHandler(sqlDB))
 	customerRouter.PATCH("address", updateCusAddressHandler(sqlDB))
 	customerRouter.PATCH("password", updateCusPasswordHandler(sqlDB))
+}
+
+func saveCustomerFCMToken(sqlDB *sql.DB) gin.HandlerFunc {
+	return func (c *gin.Context) {
+		reqBody := struct {
+			FCMToken string `json:"fcm_token"`
+		}{}
+
+		err := c.BindJSON(&reqBody)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, err)
+			return
+		}
+
+		log.Println("FCM TOKEN:", reqBody.FCMToken)
+		c.JSON(http.StatusOK, nil)
+		// cusId, err := middleware.AuthenticateCId(c, sqlDB)
+		
+
+		// if err != nil {
+		// 	c.JSON(http.StatusUnauthorized, err)
+		// 	return
+		// }
+
+		
+		// res, reqErr := GetCustomerData(sqlDB, *cusId)
+		// if reqErr != nil {
+		// 	log.Println("Failed to get customer: ", reqErr.Err)
+		// 	c.JSON(reqErr.StatusCode, reqErr.Err)
+		// 	return
+		// }
+
+		// c.JSON(http.StatusOK, res)
+	}
 }
 
 func getCustomerDataHandler(sqlDB *sql.DB) gin.HandlerFunc {
