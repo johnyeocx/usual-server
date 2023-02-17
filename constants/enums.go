@@ -16,8 +16,8 @@ type MyPaymentIntentStatus string
 
 const (
 	PMIPaymentFailed        	MyPaymentIntentStatus = "payment_failed"
-	PMIPaymentRequiresAction    MyPaymentIntentStatus = "payment_requires_action"
-	PMIPaymentSucceeded        	MyPaymentIntentStatus = "payment_succeeded"
+	PMIPaymentRequiresAction    MyPaymentIntentStatus = "requires_action"
+	PMIPaymentSucceeded        	MyPaymentIntentStatus = "succeeded"
 )
 
 func StripePMStatusToMYPMStatus(status stripe.PaymentIntentStatus) (MyPaymentIntentStatus) {
