@@ -3,6 +3,7 @@ package routes
 import (
 	"database/sql"
 
+	firebase "firebase.google.com/go"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
 	"github.com/johnyeocx/usual/server/api/auth"
@@ -20,7 +21,12 @@ import (
 
 
 
-func CreateRoutes(router *gin.Engine, db *sql.DB, s3Sess *session.Session) {
+func CreateRoutes(
+	router *gin.Engine,
+	db *sql.DB, 
+	s3Sess *session.Session,
+	firebaseApp *firebase.App,
+) {
 
 
 	apiRoute := router.Group("/api")
@@ -28,7 +34,7 @@ func CreateRoutes(router *gin.Engine, db *sql.DB, s3Sess *session.Session) {
 		auth.Routes(apiRoute.Group("/auth"), db, s3Sess)
 		business.Routes(apiRoute.Group("/business"), db, s3Sess)
 		usage.Routes(apiRoute.Group("/usage"), db, s3Sess)
-		stripe_webhook.Routes(apiRoute.Group("/stripe_webhook"), db, s3Sess)
+		stripe_webhook.Routes(apiRoute.Group("/stripe_webhook"), db, s3Sess, firebaseApp)
 		sub_product.Routes(apiRoute.Group("/business/subscription_product"), db, s3Sess)
 
 		c_business.Routes(apiRoute.Group("/c/business"), db, s3Sess)

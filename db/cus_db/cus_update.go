@@ -1,13 +1,32 @@
-package db
+package cusdb
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/johnyeocx/usual/server/db/models"
 )
 
+func (c *CustomerDB) UpdateCusDefaultCard(
+	cusId int, 
+	cardId int,
+) (error) {
+	query := `
+	UPDATE customer SET default_card_id=$1 WHERE customer_id=$2
+	`
+	
+	_, err := c.DB.Exec(query, 
+		cardId,
+		cusId,
+	)
+	return err
+}
 
-func (c *CustomerDB) UpdateCusName(cusId int, firstName string, lastName string) (error){
+func (c *CustomerDB) UpdateCusName(
+	cusId int, 
+	firstName string, 
+	lastName string,
+) (error){
 
 	_, err := c.DB.Exec(`UPDATE customer SET first_name=$1, last_name=$2 WHERE customer_id=$3`, firstName, lastName, cusId)
 	return err
@@ -37,5 +56,12 @@ func (c *CustomerDB) UpdateCusPassword(cusId int, passwordHash string) (error){
 	_, err := c.DB.Exec(`UPDATE customer 
 	SET password=$1
 	WHERE customer_id=$2`, passwordHash, cusId)
+	return err
+}
+
+func (c *CustomerDB) InsertOrUpdateCusFCMToken(cusId int, fcmToken string) (error) {
+	_, err := c.DB.Exec(`INSERT into customer_fcm_token 
+	(token, customer_id, last_updated) VALUES($1, $2, $3)
+	ON CONFLICT (customer_id) DO UPDATE SET token=$1, last_updated=$3`, fcmToken, cusId, time.Now())
 	return err
 }

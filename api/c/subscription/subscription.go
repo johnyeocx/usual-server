@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db"
+	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/my_stripe"
 )
@@ -20,7 +22,7 @@ func GetSubscriptionData(
 	productId int,
 ) (map[string]interface{}, *models.RequestError) {
 
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 	total, err := c.GetTotalSpent(cusId, productId)
 	if err != nil {
 		return nil, &models.RequestError{
@@ -64,7 +66,7 @@ func CreateSubscription(
 	
 	// Get list of products + subplans
 	s := db.SubscriptionDB{DB: sqlDB}
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 
 	// make sure customer is not already subscribed
 	err := c.CheckCusSubscribed(customerId, []int{productId})
@@ -106,13 +108,15 @@ func CreateSubscription(
 	stripeIn := stripeSub.LatestInvoice
 	lastIn := models.Invoice{}
 	now := time.Now()
+
+	
 	if stripeIn != nil {
 		lastIn.CardID = cardId
 		lastIn.Total = int(stripeIn.Total)
 		lastIn.Created = time.Unix(stripeIn.Created, 0)
 		lastIn.InvoiceURL = stripeIn.HostedInvoiceURL
 		lastIn.Status = string(stripeIn.Status)
-		lastIn.PaymentIntentStatus = string(stripeSub.LatestInvoice.PaymentIntent.Status)
+		lastIn.PaymentIntentStatus = constants.StripePMStatusToMYPMStatus(stripeSub.LatestInvoice.PaymentIntent.Status)
 	}
 	sub := models.Subscription{
 		StripeSubID: stripeSub.ID,
@@ -147,7 +151,7 @@ func ResolvePaymentIntent(
 ) (map[string]interface{}, *models.RequestError) {
 
 	// Get card
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 	s := db.SubscriptionDB{DB: sqlDB}
 	i := db.InvoiceDB{DB: sqlDB}
 
@@ -236,7 +240,7 @@ func ResumeSubscription(
 ) ( *models.RequestError) {
 
 
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 	s := db.SubscriptionDB{DB: sqlDB}
 
 	data, err := s.GetCusResumeSubData(customerId, subId)
@@ -402,7 +406,7 @@ func ChangeSubDefaultCard(
 	cardId int,
 ) ( *models.RequestError) {
 	s := db.SubscriptionDB{DB: sqlDB}
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 
 	// 1. check if cus owns sub
 	sub, _, _, err := s.CusOwnsSub(cusId, subId)

@@ -133,6 +133,7 @@ func loginHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 
 		res, reqErr := login(sqlDB, reqBody.Email, reqBody.Password)
+
 		if reqErr != nil {
 			log.Println(reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)

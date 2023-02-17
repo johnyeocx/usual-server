@@ -11,6 +11,7 @@ import (
 	"github.com/johnyeocx/usual/server/api/auth"
 	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db"
+	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/media"
 	"github.com/johnyeocx/usual/server/external/my_stripe"
@@ -29,7 +30,7 @@ func CreateCustomer(
 	email string,
 	password string,
 ) (*models.RequestError) {
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 
 	// check email valid
 	if !constants.EmailValid(email) {
@@ -107,7 +108,7 @@ func VerifyCustomerRegEmail(
 	}
 
 	// 3. Get business by email
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 	cus, err := c.GetCustomerByEmail(email)
 	if err != nil {		
 		return nil, &models.RequestError{
@@ -178,7 +179,7 @@ func sendRegEmailOTP(
 	sqlDB *sql.DB,
 	newEmail string,
 ) (*models.RequestError){
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 
 	// check email valid
 	if !constants.EmailValid(newEmail) {
@@ -237,7 +238,7 @@ func GetCustomerData(
 	cusId int,
 ) (map[string]interface{}, *models.RequestError) {
 
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 	
 	cus, err := c.GetCustomerByID(cusId)
 	if err != nil {
@@ -293,7 +294,7 @@ func GetCusSubsAndInvoices(
 	cusId int,
 ) (map[string]interface{}, *models.RequestError) {
 
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 
 	subs, err := c.GetCustomerSubscriptions(cusId)
 	if err != nil {
@@ -325,7 +326,7 @@ func AddCusCreditCard(
 	card models.CreditCard,
 ) (map[string]interface{}, *models.RequestError) {
 
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 
 	// 1. Get customer stripe id
 	cusStripeId, err := c.GetCustomerStripeId(cusId) 

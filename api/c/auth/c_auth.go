@@ -9,6 +9,7 @@ import (
 
 	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db"
+	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
@@ -42,7 +43,8 @@ func login(
 ) (map[string]interface{}, *models.RequestError) {
 
 	// 1. Get hashed password
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
+
 	cusId, hashedPassword, err := c.GetCusPasswordFromEmail(email)
 	if err != nil {
 		return nil, &models.RequestError{
@@ -60,6 +62,7 @@ func login(
 			StatusCode: http.StatusUnauthorized,
 		}
 	}
+
 
 	accessToken, refreshToken, err := secure.GenerateTokensFromId(*cusId, "customer")
 	if err != nil {

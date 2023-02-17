@@ -8,6 +8,7 @@ import (
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/external/cloud"
 	"github.com/johnyeocx/usual/server/routes"
+	"github.com/johnyeocx/usual/server/utils/fcm"
 	"github.com/johnyeocx/usual/server/utils/middleware"
 	"github.com/joho/godotenv"
 )
@@ -24,17 +25,17 @@ func main() {
 	}
 
 
-	// 2. Connect to DB
+	// 2. Connect to services
 	psqlDB := db.Connect()
+	sess := cloud.ConnectAWS()
+	fbApp, err := fcm.CreateFirebaseApp()
+	if err != nil {
+		panic(err);
+	}
 
 	// 3. Run cron jobs
 	// go scheduled.RunCronJobs(psqlDB)
-
-	// 4. Connect to S3
-	sess := cloud.ConnectAWS()
-	// media.GenerateSubscribeQRCode(sess, 1)
-	// return
-
+	
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{
@@ -52,7 +53,7 @@ func main() {
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, "Welcome to the usual api")
 	})
-	routes.CreateRoutes(router, psqlDB, sess)
+	routes.CreateRoutes(router, psqlDB, sess, fbApp)
 	
 	router.Run(":8080")
 }

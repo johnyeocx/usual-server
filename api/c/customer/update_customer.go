@@ -7,7 +7,7 @@ import (
 
 	"github.com/johnyeocx/usual/server/api/auth"
 	"github.com/johnyeocx/usual/server/constants"
-	"github.com/johnyeocx/usual/server/db"
+	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/media"
 	"github.com/johnyeocx/usual/server/external/my_stripe"
@@ -22,7 +22,7 @@ func updateCusName(
 ) (*models.RequestError) {
 
 	// 1. get stripe id from db
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 	stripeId, err := c.GetCustomerStripeId(cusId)
 	if err != nil {
 		return &models.RequestError{
@@ -52,13 +52,12 @@ func updateCusName(
 	return nil
 }
 
-
 func sendUpdateEmailOTP(
 	sqlDB *sql.DB,
 	cusId int,
 	newEmail string,
 ) (*models.RequestError){
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 
 	// check email valid
 	if !constants.EmailValid(newEmail) {
@@ -127,7 +126,7 @@ func verifyUpdateCusEmail(
 
 
 	// 1. get stripe id from db
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 	stripeId, err := c.GetCustomerStripeId(cusId)
 	if err != nil {
 		return &models.RequestError{
@@ -163,7 +162,7 @@ func updateCusAddress(
 ) (*models.RequestError) {
 
 	// 1. get stripe id from db
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 	stripeId, err := c.GetCustomerStripeId(cusId)
 	if err != nil {
 		return &models.RequestError{
@@ -199,7 +198,7 @@ func updateCusPassword(
 ) (*models.RequestError) {
 
 	// 1. get stripe id from db
-	c := db.CustomerDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 	oldPasswordHash, err := c.GetCusPasswordFromID(cusId)
 	if err != nil {
 		return &models.RequestError{
@@ -232,5 +231,23 @@ func updateCusPassword(
 		}
 	}
 	
+	return nil
+}
+
+func updateCusFCMToken(
+	sqlDB *sql.DB,
+	cusId int,
+	fcmToken string,
+) (*models.RequestError) {
+	c := cusdb.CustomerDB{DB: sqlDB}
+	err := c.InsertOrUpdateCusFCMToken(cusId, fcmToken)
+
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+
 	return nil
 }

@@ -48,7 +48,7 @@ type Invoice struct {
 	DefaultPaymentMethod	JsonNullString	`json:"default_payment_method"`
 	ApplicationFeeAmt		JsonNullInt64 	`json:"app_fee_amt"`
 	CardID					int				`json:"card_id"`
-	PaymentIntentStatus		string 			`json:"payment_intent_status"`
+	PaymentIntentStatus		constants.MyPaymentIntentStatus 			`json:"payment_intent_status"`
 
 	// NULLLABLES
 	Subscription		*Subscription   `json:"sub"`

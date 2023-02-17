@@ -4,15 +4,24 @@ import (
 	"database/sql"
 	"time"
 
+	firebase "firebase.google.com/go"
+	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db"
+	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
+	"github.com/johnyeocx/usual/server/utils/fcm"
 )
 
-func InsertInvoice(sqlDB *sql.DB, data map[string]interface{}, paymentStatus string) (*models.Invoice, error) {
+func InsertInvoice(
+	sqlDB *sql.DB, 
+	fbApp *firebase.App,
+	data map[string]interface{}, 
+	paymentStatus constants.MyPaymentIntentStatus,
+) (*models.Invoice, error) {
 	invoice := ParseInvoicePaid(data)
-	
 	invoice.PaymentIntentStatus = paymentStatus
 	i := db.InvoiceDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
 
 	if (invoice.SubStripeID.Valid) {
 		sub, err := i.GetSubFromStripeID(invoice.SubStripeID.String)
@@ -21,8 +30,24 @@ func InsertInvoice(sqlDB *sql.DB, data map[string]interface{}, paymentStatus str
 		}
 		invoice.SubID = sub.ID
 		invoice.CardID = sub.CardID
+		
+
+		// SEND PUSH NOTIFICATION
+		fcmToken, err := c.GetCusFCMToken(sub.CustomerID)
+		if err == sql.ErrNoRows {
+			// handle no fcm token
+		} else if err != nil {
+			// do something else
+			return nil, err
+		} else {
+			if paymentStatus == constants.PMIPaymentFailed {
+				fcm.SendPaymentFailedNotification(fbApp, *fcmToken, sub.ID, sub.SubProduct.Product.Name, *sub.BusinessName)
+			} else if paymentStatus == constants.PMIPaymentSucceeded {
+				fcm.SendPaymentSucceededNotification(fbApp, *fcmToken, sub.ID, sub.SubProduct.SubPlan.UnitAmount, sub.SubProduct.Product.Name, *sub.BusinessName)
+			}
+		}
 	}
-	
+
 	
 	err := i.InsertInvoice(invoice)
 	return invoice, err

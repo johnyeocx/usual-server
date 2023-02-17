@@ -14,9 +14,28 @@ func (i *InvoiceDB) GetSubFromStripeID (
 	subStripeId string,
 ) (*models.Subscription, error) {
 
+	query := `
+		SELECT s.sub_id, s.customer_id, s.card_id, p.name, b.name, sp.unit_amount
+		FROM subscription as s 
+		JOIN subscription_plan as sp on sp.plan_id=s.plan_id
+		JOIN product as p on p.product_id=sp.product_id
+		JOIN business as b on b.business_id=p.business_id
+		WHERE stripe_sub_id=$1
+	`
 	var sub models.Subscription
-	err := i.DB.QueryRow(`SELECT sub_id, card_id FROM subscription WHERE stripe_sub_id=$1`, subStripeId).Scan(
-		&sub.ID, &sub.CardID)
+	sub.SubProduct = &models.SubscriptionProduct{}
+	sub.SubProduct.Product = models.Product{}
+	sub.SubProduct.SubPlan = models.SubscriptionPlan{}
+	
+	err := i.DB.QueryRow(query, subStripeId).Scan(
+		&sub.ID, 
+		&sub.CustomerID,
+		&sub.CardID,
+		&sub.SubProduct.Product.Name,
+		&sub.BusinessName,
+		&sub.SubProduct.SubPlan.UnitAmount,
+	)
+	
 	if err != nil {
 		return nil, err
 	}

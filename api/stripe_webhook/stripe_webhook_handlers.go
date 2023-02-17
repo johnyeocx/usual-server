@@ -7,16 +7,23 @@ import (
 	"log"
 	"net/http"
 
+	firebase "firebase.google.com/go"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
+	"github.com/johnyeocx/usual/server/constants"
 	"github.com/stripe/stripe-go/v74"
 )
 
-func Routes(stripeWRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
-	stripeWRouter.POST("", stripeWebhookHandler(sqlDB))
+func Routes(
+	stripeWRouter *gin.RouterGroup, 
+	sqlDB *sql.DB, 
+	s3Sess *session.Session, 
+	firebaseApp *firebase.App,
+) {
+	stripeWRouter.POST("", stripeWebhookHandler(sqlDB, firebaseApp))
 }
 
-func stripeWebhookHandler(sqlDB *sql.DB) gin.HandlerFunc {
+func stripeWebhookHandler(sqlDB *sql.DB, firebaseApp *firebase.App) gin.HandlerFunc {
 	return func (c *gin.Context) {
 		
 		const MaxBodyBytes = int64(65536)
@@ -35,7 +42,7 @@ func stripeWebhookHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}	
 
 		if event.Type == "invoice.paid" {
-			_, err := InsertInvoice(sqlDB, event.Data.Object, "succeeded")
+			_, err := InsertInvoice(sqlDB, firebaseApp, event.Data.Object, constants.PMIPaymentSucceeded)
 			if err != nil {
 				log.Println("Failed to insert invoice paid:", err)
 				c.JSON(http.StatusBadGateway, err)
@@ -47,7 +54,7 @@ func stripeWebhookHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 
 		if event.Type == "invoice.payment_action_required" {
-			_, err := InsertInvoice(sqlDB, event.Data.Object, "requires_action")
+			_, err := InsertInvoice(sqlDB, firebaseApp, event.Data.Object, constants.PMIPaymentRequiresAction)
 			if err != nil {
 				log.Println("Failed to insert invoice action required:", err)
 				c.JSON(http.StatusBadGateway, err)
@@ -59,7 +66,8 @@ func stripeWebhookHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		}
 
 		if event.Type == "invoice.payment_failed" {
-			_, err := InsertInvoice(sqlDB, event.Data.Object, "payment_failed")
+			_, err := InsertInvoice(sqlDB, firebaseApp, event.Data.Object, constants.PMIPaymentFailed)
+			
 
 			if err != nil {
 				log.Println("Failed to insert invoice payment failed:", err)
