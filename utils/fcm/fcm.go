@@ -46,6 +46,14 @@ func SendPaymentFailedNotification(
 		Data: map[string]string{
 			"type": string(constants.PNPaymentFailed),
 			"sub_id": fmt.Sprint(subId),
+			
+		},
+		APNS: &messaging.APNSConfig{
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{
+					ContentAvailable: true,
+				},
+			},
 		},
 	})
 	
@@ -79,6 +87,13 @@ func SendPaymentSucceededNotification(
 		Data: map[string]string{
 			"type": string(constants.PNPaymentRequiresAction),
 			"sub_id": fmt.Sprint(subId),
+		},
+		APNS: &messaging.APNSConfig{
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{
+					ContentAvailable: true,
+				},
+			},
 		},
 	})
 	
