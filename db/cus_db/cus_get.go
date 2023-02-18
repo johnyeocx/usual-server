@@ -34,7 +34,7 @@ func (c *CustomerDB) GetCustomerByID (
 
 	err := c.DB.QueryRow(`SELECT 
 	c.customer_id, c.first_name, c.last_name, c.email, c.stripe_id, c.default_card_id, 
-	c.address_line1, c.address_line2, c.postal_code, c.city, c.country
+	c.address_line1, c.address_line2, c.postal_code, c.city, c.country, c.uuid
 	FROM customer as c 
 	WHERE customer_id=$1
 	GROUP BY c.customer_id`, 
@@ -50,6 +50,7 @@ func (c *CustomerDB) GetCustomerByID (
 		&cus.Address.PostalCode,
 		&cus.Address.City,
 		&cus.Address.Country,
+		&cus.Uuid,
 	)
 	if err != nil {
 		return nil, err
