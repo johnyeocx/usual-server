@@ -75,8 +75,8 @@ func (s *SubscriptionDB) GetCusResumeSubData(cusId int, subId int) (
 	JOIN subscription_plan as sp on sp.plan_id=s.plan_id
 	JOIN product as p on p.product_id=sp.product_id
 	JOIN business as b on b.business_id=p.business_id
-	JOIN invoice as i on i.stripe_prod_id=p.stripe_product_id
-	JOIN customer_card as cc on cc.customer_id=c.customer_id
+	JOIN invoice as i on i.sub_id=s.sub_id
+	JOIN customer_card as cc on s.card_id=cc.card_id
 	WHERE c.customer_id=$1 AND s.sub_id=$2
 	ORDER BY i.created DESC 
 	LIMIT 1`

@@ -9,6 +9,9 @@ const (
 	PNPaymentFailed					PushNotificationType = "payment_failed"
 	PNPaymentRequiresAction        	PushNotificationType = "payment_requires_action"
 	PNPaymentSucceeded             	PushNotificationType = "payment_succeeded"
+
+
+	PNSubCancelled	             	PushNotificationType = "subscription_cancelled"
 )
 
 
@@ -18,6 +21,7 @@ const (
 	PMIPaymentFailed        	MyPaymentIntentStatus = "payment_failed"
 	PMIPaymentRequiresAction    MyPaymentIntentStatus = "requires_action"
 	PMIPaymentSucceeded        	MyPaymentIntentStatus = "succeeded"
+	PMIPaymentCancelled        	MyPaymentIntentStatus = "cancelled"
 )
 
 func StripePMStatusToMYPMStatus(status stripe.PaymentIntentStatus) (MyPaymentIntentStatus) {

@@ -31,3 +31,9 @@ type CreateSubReturn struct {
 	Status			stripe.PaymentIntentStatus 		`json:"status"`
 	PaymentIntent 	*stripe.PaymentIntent `json:"payment_intent"`
 }
+
+type ResumeSubReturn struct {
+	Status			stripe.PaymentIntentStatus 		`json:"status"`
+	PaymentIntent 	*stripe.PaymentIntent 			`json:"payment_intent"`
+	LastInvoice 	*Invoice 						`json:"last_invoice"`
+}

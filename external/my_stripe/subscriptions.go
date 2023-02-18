@@ -96,7 +96,7 @@ func ResumeSubscription(
 	priceId string,
 	cardId string,
 	expires time.Time,
-) (*string, error) {
+) (*stripe.Subscription, error) {
 	stripe.Key = stripeSecretKey()
 
 	// for each item, create subitem params
@@ -105,12 +105,13 @@ func ResumeSubscription(
 		Price: stripe.String(priceId),
 	})
 
-	var billingAnchor int64
+
+	var billingAnchor *int64
 	if (expires.After(time.Now())) {
-		billingAnchor = expires.Unix()
-	} else {
-		billingAnchor = time.Now().Unix()
-	}
+		tmp := expires.Unix()
+		billingAnchor = &tmp
+	} 
+
 
 	params := &stripe.SubscriptionParams{
 		Customer: stripe.String(cusId),
@@ -122,15 +123,16 @@ func ResumeSubscription(
 		DefaultPaymentMethod: stripe.String(cardId),
 		ProrationBehavior: stripe.String("none"),
 		// TrialEnd: stripe.Int64(billingAnchor),
-		BillingCycleAnchor: stripe.Int64(billingAnchor),
+		BillingCycleAnchor: billingAnchor,
 	};
 	params.AddExpand("latest_invoice.payment_intent")
-	
+
 	s, err := subscription.New(params);
 	if err != nil {
 		return nil, err
 	}
-	return &s.ID, nil
+
+	return s, nil
 }
 
 func CancelSubscription(subId string) (error) {

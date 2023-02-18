@@ -296,6 +296,11 @@ func EmailValid(e string) bool {
     return emailRegex.MatchString(e)
 }
 
+func PasswordValid(e string) bool {
+    return len(e) >= 8
+}
+
+
 func FullName(firstName string, lastName string) string {
 	return firstName + " " + lastName
 }

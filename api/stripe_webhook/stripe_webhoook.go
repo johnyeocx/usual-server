@@ -2,15 +2,63 @@ package stripe_webhook
 
 import (
 	"database/sql"
+	"errors"
+	"log"
 	"time"
 
 	firebase "firebase.google.com/go"
+	"github.com/johnyeocx/usual/server/api/c/subscription"
 	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db"
 	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/fcm"
 )
+
+func VoidedInvoice(sqlDB *sql.DB, fbApp *firebase.App, data map[string]interface{}) (error) {
+	invoice := ParseInvoicePaid(data)
+	i := db.InvoiceDB{DB: sqlDB}
+	c := cusdb.CustomerDB{DB: sqlDB}
+
+	if !invoice.SubStripeID.Valid {
+		return errors.New("no subscription stripe id")
+	}
+
+	sub, err := i.GetSubFromStripeID(invoice.SubStripeID.String)
+	if err != nil {
+		return err
+	}
+
+	invoice.PaymentIntentStatus = constants.PMIPaymentCancelled
+	err = i.InsertInvoice(invoice)
+	if err != nil {
+		return err
+	}
+	
+	if (sub.Cancelled) {
+		return nil
+	}
+	
+	_, reqErr := subscription.CancelSubscription(sqlDB, sub.CustomerID, sub.ID)
+	if reqErr != nil {
+		log.Println("Failed to cancel subscription")
+		return reqErr.Err
+	}
+
+
+	// SEND PUSH NOTIFICATION
+	fcmToken, err := c.GetCusFCMToken(sub.CustomerID)
+		if err == sql.ErrNoRows {
+			// handle no fcm token
+		} else if err != nil {
+			// do something else
+			return  err
+		} else {
+			fcm.SendPaymentVoidedNotification(fbApp, *fcmToken, sub.ID, sub.SubProduct.Product.Name, *sub.BusinessName)
+		}
+
+	return nil
+}
 
 func InsertInvoice(
 	sqlDB *sql.DB, 

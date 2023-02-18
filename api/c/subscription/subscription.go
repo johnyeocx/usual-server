@@ -3,7 +3,6 @@ package subscription
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/my_stripe"
+	"github.com/stripe/stripe-go/v74"
 )
 
 
@@ -237,7 +237,7 @@ func ResumeSubscription(
 	customerId int,
 	cardId int,
 	subId int,
-) ( *models.RequestError) {
+) (*models.ResumeSubReturn, *models.RequestError) {
 
 
 	c := cusdb.CustomerDB{DB: sqlDB}
@@ -245,17 +245,18 @@ func ResumeSubscription(
 
 	data, err := s.GetCusResumeSubData(customerId, subId)
 	if err != nil {
-		return  &models.RequestError{
+		return  nil, &models.RequestError{
 			Err: err,
 			StatusCode: http.StatusBadGateway,
 		}
 	}
+
 	
 	plan := data["plan"].(models.SubscriptionPlan)
 	sub := data["subscription"].(models.Subscription)
 
 	if !sub.Cancelled {
-		return &models.RequestError{
+		return nil, &models.RequestError{
 			Err: errors.New("subscription is not cancelled so can't resume"),
 			StatusCode: http.StatusBadRequest,
 		}
@@ -267,7 +268,7 @@ func ResumeSubscription(
 	if sub.CardID != cardId {
 		card, err := c.GetCusCard(customerId, cardId)
 		if err != nil {
-			return &models.RequestError{
+			return nil, &models.RequestError{
 				Err: err,
 				StatusCode: http.StatusUnauthorized,
 			}
@@ -277,12 +278,13 @@ func ResumeSubscription(
 		cardStripeId = data["stripe_card_id"].(string)
 	}
 
+
 	cusStripeId := data["stripe_cus_id"].(string)
 
 	busStripeId := data["stripe_bus_id"].(string)
 
-
-	stripeSubId, err := my_stripe.ResumeSubscription(
+	
+	stripeSub, err := my_stripe.ResumeSubscription(
 		cusStripeId,
 		busStripeId,
 		*plan.StripePriceID,
@@ -292,21 +294,40 @@ func ResumeSubscription(
 
 
 	if err != nil {
-		return &models.RequestError{
+		return nil, &models.RequestError{
 			Err: err,
 			StatusCode: http.StatusBadGateway,
 		}
 	}
-	fmt.Println(*stripeSubId)
 
-	err = s.ResumeSubscription(subId, cardId, *stripeSubId)
+	err = s.ResumeSubscription(subId, cardId, stripeSub.ID)
 	if err != nil {
-		return &models.RequestError{
+		return nil, &models.RequestError{
 			Err: err,
 			StatusCode: http.StatusBadGateway,
 		}
 	}
-	return nil
+
+	
+	var paymentIntent *stripe.PaymentIntent
+	var lastIn models.Invoice
+	if stripeSub.LatestInvoice == nil {
+		paymentIntent = nil
+		
+	} else {
+		paymentIntent = stripeSub.LatestInvoice.PaymentIntent
+		lastIn.Created = time.Unix(stripeSub.LatestInvoice.Created, 0)
+		lastIn.CardID = cardId
+		lastIn.Total = int(stripeSub.LatestInvoice.Total)
+		lastIn.InvoiceURL = stripeSub.LatestInvoice.HostedInvoiceURL
+		lastIn.Status = string(stripeSub.LatestInvoice.Status)
+		lastIn.PaymentIntentStatus = constants.StripePMStatusToMYPMStatus(stripeSub.LatestInvoice.PaymentIntent.Status)
+	}
+
+	return &models.ResumeSubReturn{
+		LastInvoice: &lastIn,
+		PaymentIntent: paymentIntent,
+	}, nil
 }
 
 
@@ -359,7 +380,12 @@ func CancelSubscription(
 
 	// 3. Set sql to cancelled and determine expired date
 	recurring := plan.RecurringDuration
-	expires := GetNextBillingDate(recurring, lastInvoice.Created)
+	var expires time.Time
+	if (lastInvoice.PaymentIntentStatus != constants.PMIPaymentSucceeded) {
+		expires = GetNextBillingDate(recurring, lastInvoice.Created)
+	} else {
+		expires = lastInvoice.Created
+	}
 
 	// // 3. update sql
 	err = s.CancelSubscription(subId, expires)
@@ -385,7 +411,7 @@ func DeleteSubIfNoPayments(sqlDB *sql.DB, subId int, stripeSubId string) (bool, 
 	}
 
 	
-	if len(invoices) == 1 && invoices[0].PaymentIntentStatus == "payment_failed" {
+	if len(invoices) == 1 && invoices[0].PaymentIntentStatus != "succeeded" {
 		err := s.DeleteSubscriptionAndInvoices(subId)
 
 		if err != nil {

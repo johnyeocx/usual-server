@@ -15,7 +15,7 @@ func (i *InvoiceDB) GetSubFromStripeID (
 ) (*models.Subscription, error) {
 
 	query := `
-		SELECT s.sub_id, s.customer_id, s.card_id, p.name, b.name, sp.unit_amount
+		SELECT s.sub_id, s.customer_id, s.card_id, s.cancelled, p.name, b.name, sp.unit_amount
 		FROM subscription as s 
 		JOIN subscription_plan as sp on sp.plan_id=s.plan_id
 		JOIN product as p on p.product_id=sp.product_id
@@ -31,6 +31,7 @@ func (i *InvoiceDB) GetSubFromStripeID (
 		&sub.ID, 
 		&sub.CustomerID,
 		&sub.CardID,
+		&sub.Cancelled,
 		&sub.SubProduct.Product.Name,
 		&sub.BusinessName,
 		&sub.SubProduct.SubPlan.UnitAmount,
@@ -70,5 +71,11 @@ func (i *InvoiceDB) InsertInvoice (
 func (i *InvoiceDB) UpdateInvoiceCardIDByStripeID(inStripeID string, cardId int) (error) {
 	stmt := `UPDATE invoice SET card_id=$1 WHERE stripe_in_id=$2`
 	_, err := i.DB.Exec(stmt, cardId, inStripeID)
+	return err
+}
+
+func (i *InvoiceDB) UpdateInvoiceStatus(inStripeID string, status string, paymentIntentStatus string) (error) {
+	stmt := `UPDATE invoice SET status=$1, payment_intent_status=$2 WHERE stripe_in_id=$3`
+	_, err := i.DB.Exec(stmt, status, paymentIntentStatus, inStripeID)
 	return err
 }

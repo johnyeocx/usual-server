@@ -33,7 +33,7 @@ func CreateCustomer(
 	c := cusdb.CustomerDB{DB: sqlDB}
 
 	// check email valid
-	if !constants.EmailValid(email) {
+	if !constants.EmailValid(email) || !constants.PasswordValid(password) {
 		return &models.RequestError{
 			Err: errors.New("invalid customer email"),
 			StatusCode: http.StatusBadRequest,

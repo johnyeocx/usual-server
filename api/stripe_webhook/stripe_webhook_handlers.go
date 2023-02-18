@@ -74,16 +74,18 @@ func stripeWebhookHandler(sqlDB *sql.DB, firebaseApp *firebase.App) gin.HandlerF
 				c.JSON(http.StatusBadGateway, err)
 				return
 			}
+		}
 
-			// err = DeleteSubIfFailedFirst(sqlDB, *invoice)
-			// if err != nil {
-			// 	log.Println("Failed to check and delete sub if failed first:", err)
-			// 	c.JSON(http.StatusBadGateway, err)
-			// 	return
-			// } else {
-			// 	c.JSON(200, nil)
-			// 	return
-			// }
+		if event.Type == "invoice.voided" {
+			err := VoidedInvoice(sqlDB, firebaseApp, event.Data.Object)
+			if err != nil {
+				log.Println("Failed to void invoice paid:", err)
+				c.JSON(http.StatusBadGateway, err)
+				return
+			} else {
+				c.JSON(200, nil)
+				return
+			}
 		}
 	}
 }

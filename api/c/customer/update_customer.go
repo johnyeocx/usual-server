@@ -196,6 +196,12 @@ func updateCusPassword(
 	oldPassword string,
 	newPassword string,
 ) (*models.RequestError) {
+	if !constants.PasswordValid(newPassword) {
+		return &models.RequestError{
+			Err: errors.New("invalid password"),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
 
 	// 1. get stripe id from db
 	c := cusdb.CustomerDB{DB: sqlDB}

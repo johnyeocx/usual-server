@@ -106,21 +106,21 @@ func ResumeSubscriptionHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			SubID 			int 	`json:"sub_id"`
 		}{}
 
-
 		if err := c.BindJSON(&reqBody); err != nil {
 			log.Printf("Failed to decode req body : %v\n", err)
 			c.JSON(400, err)
 			return
 		}
 
-		reqErr := ResumeSubscription(sqlDB, *customerId, reqBody.CardID, reqBody.SubID)
+
+		res, reqErr := ResumeSubscription(sqlDB, *customerId, reqBody.CardID, reqBody.SubID)
 		if reqErr != nil {
 			log.Println("Failed to resume subscription: ", reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)
 			return
 		}
 
-		c.JSON(200, nil)
+		c.JSON(200, res)
 	}
 }
 
