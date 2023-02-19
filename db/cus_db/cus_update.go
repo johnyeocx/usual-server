@@ -55,7 +55,7 @@ func (c *CustomerDB) UpdateCusCountry(cusId int, country string) (error){
 func (c *CustomerDB) UpdateCusPassword(cusId int, passwordHash string) (error){
 	_, err := c.DB.Exec(`UPDATE customer 
 	SET password=$1
-	WHERE customer_id=$2`, passwordHash, cusId)
+	WHERE customer_id=$2 AND signin_provider='custom'`, passwordHash, cusId)
 	return err
 }
 

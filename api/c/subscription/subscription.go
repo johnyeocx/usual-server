@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/johnyeocx/usual/server/constants"
+	my_enums "github.com/johnyeocx/usual/server/constants/enums"
 	"github.com/johnyeocx/usual/server/db"
 	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
@@ -116,7 +116,7 @@ func CreateSubscription(
 		lastIn.Created = time.Unix(stripeIn.Created, 0)
 		lastIn.InvoiceURL = stripeIn.HostedInvoiceURL
 		lastIn.Status = string(stripeIn.Status)
-		lastIn.PaymentIntentStatus = constants.StripePMStatusToMYPMStatus(stripeSub.LatestInvoice.PaymentIntent.Status)
+		lastIn.PaymentIntentStatus = my_enums.StripePMStatusToMYPMStatus(stripeSub.LatestInvoice.PaymentIntent.Status)
 	}
 	sub := models.Subscription{
 		StripeSubID: stripeSub.ID,
@@ -321,7 +321,7 @@ func ResumeSubscription(
 		lastIn.Total = int(stripeSub.LatestInvoice.Total)
 		lastIn.InvoiceURL = stripeSub.LatestInvoice.HostedInvoiceURL
 		lastIn.Status = string(stripeSub.LatestInvoice.Status)
-		lastIn.PaymentIntentStatus = constants.StripePMStatusToMYPMStatus(stripeSub.LatestInvoice.PaymentIntent.Status)
+		lastIn.PaymentIntentStatus = my_enums.StripePMStatusToMYPMStatus(stripeSub.LatestInvoice.PaymentIntent.Status)
 	}
 
 	return &models.ResumeSubReturn{
@@ -381,7 +381,7 @@ func CancelSubscription(
 	// 3. Set sql to cancelled and determine expired date
 	recurring := plan.RecurringDuration
 	var expires time.Time
-	if (lastInvoice.PaymentIntentStatus != constants.PMIPaymentSucceeded) {
+	if (lastInvoice.PaymentIntentStatus != my_enums.PMIPaymentSucceeded) {
 		expires = GetNextBillingDate(recurring, lastInvoice.Created)
 	} else {
 		expires = lastInvoice.Created

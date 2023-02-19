@@ -22,6 +22,7 @@ func Routes(customerRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 
 
 	customerRouter.POST("create", createCustomerHandler(sqlDB))
+	customerRouter.POST("create_pass", createCusPassHandler(sqlDB, s3Sess))
 	customerRouter.POST("verify_email", verifyCustomerEmailHandler(sqlDB, s3Sess))
 	customerRouter.POST("add_card", addCustomerCardHandler(sqlDB))
 	customerRouter.POST("resend_email_otp", resendEmailOTPHandler(sqlDB))
@@ -127,6 +128,24 @@ func createCustomerHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		if reqErr != nil {
 			log.Println("Failed to create customer:", reqErr.Err)
 			c.JSON(reqErr.StatusCode, reqErr.Err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
+}
+
+func createCusPassHandler(sqlDB *sql.DB, s3sess *session.Session) gin.HandlerFunc {
+	return func (c *gin.Context) {
+		cId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+			return
+		}
+
+		reqErr := CreateCusPass(sqlDB, s3sess, *cId)
+		if reqErr != nil {
+			c.JSON(200, reqErr.Err)
 			return
 		}
 

@@ -8,7 +8,7 @@ import (
 
 	firebase "firebase.google.com/go"
 	"github.com/johnyeocx/usual/server/api/c/subscription"
-	"github.com/johnyeocx/usual/server/constants"
+	my_enums "github.com/johnyeocx/usual/server/constants/enums"
 	"github.com/johnyeocx/usual/server/db"
 	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
@@ -29,7 +29,7 @@ func VoidedInvoice(sqlDB *sql.DB, fbApp *firebase.App, data map[string]interface
 		return err
 	}
 
-	invoice.PaymentIntentStatus = constants.PMIPaymentCancelled
+	invoice.PaymentIntentStatus = my_enums.PMIPaymentCancelled
 	err = i.InsertInvoice(invoice)
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func InsertInvoice(
 	sqlDB *sql.DB, 
 	fbApp *firebase.App,
 	data map[string]interface{}, 
-	paymentStatus constants.MyPaymentIntentStatus,
+	paymentStatus my_enums.MyPaymentIntentStatus,
 ) (*models.Invoice, error) {
 	invoice := ParseInvoicePaid(data)
 	invoice.PaymentIntentStatus = paymentStatus
@@ -88,9 +88,9 @@ func InsertInvoice(
 			// do something else
 			return nil, err
 		} else {
-			if paymentStatus == constants.PMIPaymentFailed {
+			if paymentStatus == my_enums.PMIPaymentFailed {
 				fcm.SendPaymentFailedNotification(fbApp, *fcmToken, sub.ID, sub.SubProduct.Product.Name, *sub.BusinessName)
-			} else if paymentStatus == constants.PMIPaymentSucceeded {
+			} else if paymentStatus == my_enums.PMIPaymentSucceeded {
 				fcm.SendPaymentSucceededNotification(fbApp, *fcmToken, sub.ID, sub.SubProduct.SubPlan.UnitAmount, sub.SubProduct.Product.Name, *sub.BusinessName)
 			}
 		}

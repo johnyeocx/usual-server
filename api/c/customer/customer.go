@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/johnyeocx/usual/server/api/auth"
 	"github.com/johnyeocx/usual/server/constants"
+	my_enums "github.com/johnyeocx/usual/server/constants/enums"
 	"github.com/johnyeocx/usual/server/db"
 	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
@@ -59,7 +60,7 @@ func CreateCustomer(
 
 	// if no rows
 	if err != nil && err == sql.ErrNoRows {
-		_, err = c.CreateCustomer(firstName, lastName, email, password, uuid)
+		_, err = c.CreateCustomer(firstName, lastName, email, password, uuid, my_enums.Custom)
 		if err != nil {
 			return &models.RequestError{
 				Err: err,
@@ -375,4 +376,38 @@ func AddCusCreditCard(
 		"brand": pm.Card.Brand,
 		"last4": pm.Card.Last4,
 	}, nil
+}
+
+
+func CreateCusPass(sqlDB *sql.DB, s3sess *session.Session, cusId int) (*models.RequestError) {
+	// 6. Add pkpass and image to cloud
+
+	c := cusdb.CustomerDB{DB: sqlDB}
+	cus, err := c.GetCustomerByID(cusId)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	fullName := cus.FullName()
+
+	err = passes.GenerateCustomerPass(s3sess, fullName, cus.Uuid, cus.ID)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	err = media.GenerateCusQR(s3sess, cus.Uuid, cus.ID)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	return nil
 }

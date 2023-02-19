@@ -1,4 +1,4 @@
-package constants
+package my_enums
 
 import "github.com/stripe/stripe-go/v74"
 
@@ -33,3 +33,11 @@ func StripePMStatusToMYPMStatus(status stripe.PaymentIntentStatus) (MyPaymentInt
 		return PMIPaymentFailed
 	}
 }
+
+type CusSignInProvider string
+
+const (
+	Google    	CusSignInProvider = "google.com"
+	Apple		CusSignInProvider = "apple.com"
+	Custom		CusSignInProvider = "custom"
+)

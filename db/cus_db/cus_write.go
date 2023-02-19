@@ -1,6 +1,7 @@
 package cusdb
 
 import (
+	my_enums "github.com/johnyeocx/usual/server/constants/enums"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
@@ -12,6 +13,7 @@ func (c *CustomerDB) CreateCustomer (
 	email string,
 	password string,
 	uuid string,
+	emailType my_enums.CusSignInProvider,
 ) (*int, error) {
 	hashedPassword, err := secure.GenerateHashFromStr(password)
 	if err != nil {
@@ -20,8 +22,8 @@ func (c *CustomerDB) CreateCustomer (
 
 	var cusId int
 	err = c.DB.QueryRow(`
-		INSERT into customer (first_name, last_name, email, password, uuid) VALUES ($1, $2, $3, $4, $5) RETURNING customer_id`,
-		firstName, lastName, email, hashedPassword, uuid,
+		INSERT into customer (first_name, last_name, email, password, uuid, signin_provider) VALUES ($1, $2, $3, $4, $5, $6) RETURNING customer_id`,
+		firstName, lastName, email, hashedPassword, uuid, emailType,
 	).Scan(&cusId)
 
 	if err != nil {
@@ -30,6 +32,28 @@ func (c *CustomerDB) CreateCustomer (
 
 	return &cusId, nil
 }
+
+func (c *CustomerDB) CreateCustomerFromExtSignin (
+	email string,
+	uuid string,
+	stripeId string,
+	signinProvider my_enums.CusSignInProvider,
+) (*int, error) {
+
+	var cusId int
+	err := c.DB.QueryRow(`
+		INSERT into customer (email, uuid, signin_provider, stripe_id) VALUES ($1, $2, $3, $4) RETURNING customer_id`,
+		email, uuid, signinProvider, stripeId,
+	).Scan(&cusId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &cusId, nil
+}
+
+
 
 func (c *CustomerDB) CreateCFromSubscribe (
 	name string,

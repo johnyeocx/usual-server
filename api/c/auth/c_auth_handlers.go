@@ -7,21 +7,25 @@ import (
 	"net/http"
 	"time"
 
+	firebase "firebase.google.com/go"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
+	my_enums "github.com/johnyeocx/usual/server/constants/enums"
 	"github.com/johnyeocx/usual/server/external/cloud"
 	"github.com/johnyeocx/usual/server/utils/middleware"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
 
 // AUTH ROUTES
-func Routes(authRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session) {
+func Routes(authRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session, fbApp *firebase.App) {
 	
 
 	authRouter.GET("/pkpass", getPkPassPresignedUrlHandler(sqlDB, s3Sess))
 	authRouter.GET("/qr", getQRPresignedUrlHandler(sqlDB, s3Sess))
 
-
+	
+	
+	authRouter.POST("/google_sign_in", googleSignInHandler(sqlDB, fbApp))
 	authRouter.POST("/validate", validateTokenHandler(sqlDB))
 	authRouter.POST("/refresh_token", refreshTokenHandler(sqlDB))
 	authRouter.POST("/login", loginHandler(sqlDB))
@@ -144,3 +148,41 @@ func loginHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
+func googleSignInHandler(sqlDB *sql.DB, fbApp *firebase.App) gin.HandlerFunc {
+	return func (c *gin.Context) {
+		
+		// 1. Get user email and search if exists in db
+		reqBody := struct {
+			Token  		 string `json:"token"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		client, err := fbApp.Auth(c)
+		if err != nil {
+				log.Fatalf("error getting Auth client: %v\n", err)
+		}
+
+		// Verify the ID token first.
+		token, err := client.VerifyIDToken(c, reqBody.Token)
+		if err != nil {
+				log.Fatal(err)
+		}
+
+		email := token.Claims["email"]
+		siginProvider := token.Firebase.SignInProvider
+		res, reqErr := ExternalSignIn(sqlDB, email.(string), my_enums.CusSignInProvider(siginProvider))
+
+		if reqErr != nil {
+			fmt.Println("Failed to sign in with external provider: ", reqErr.Err)
+			c.JSON(reqErr.StatusCode, res)
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
+	}
+}

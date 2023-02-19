@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/johnyeocx/usual/server/constants"
+	my_enums "github.com/johnyeocx/usual/server/constants/enums"
 )
 
 type Customer struct {
@@ -15,6 +16,8 @@ type Customer struct {
 	StripeID 			string 			`json:"stripe_id"`
 	DefaultCardID	 	JsonNullInt16	`json:"default_card_id"`
 	Uuid 				string 			`json:"uuid"`
+	SignInProvider		my_enums.CusSignInProvider		`json:"signin_provider"`
+	EmailVerified		*bool 			`json:"email_verified"`
 }
 
 func (c* Customer) FullName() string{
@@ -48,7 +51,7 @@ type Invoice struct {
 	DefaultPaymentMethod	JsonNullString	`json:"default_payment_method"`
 	ApplicationFeeAmt		JsonNullInt64 	`json:"app_fee_amt"`
 	CardID					int				`json:"card_id"`
-	PaymentIntentStatus		constants.MyPaymentIntentStatus 			`json:"payment_intent_status"`
+	PaymentIntentStatus		my_enums.MyPaymentIntentStatus 			`json:"payment_intent_status"`
 
 	// NULLLABLES
 	Subscription		*Subscription   `json:"sub"`

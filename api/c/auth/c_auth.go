@@ -7,10 +7,13 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/johnyeocx/usual/server/constants"
+	my_enums "github.com/johnyeocx/usual/server/constants/enums"
 	"github.com/johnyeocx/usual/server/db"
 	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
+	"github.com/johnyeocx/usual/server/external/my_stripe"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
 
@@ -72,6 +75,79 @@ func login(
 		}
 	}
 
+
+	return map[string]interface{}{
+		"access_token": accessToken,
+		"refresh_token": refreshToken,
+	}, nil
+}
+
+func ExternalSignIn(
+	sqlDB *sql.DB,
+	email string,
+	signInProvider my_enums.CusSignInProvider,
+) (map[string]interface{}, *models.RequestError) {
+	c := cusdb.CustomerDB{DB: sqlDB}
+	
+	// 1. Check if email already exists. If 
+	cus, err := c.GetCustomerByEmail(email)
+
+
+	if err != nil && err != sql.ErrNoRows{
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// 1. If email verified
+	if cus != nil && *cus.EmailVerified && cus.SignInProvider != signInProvider {
+		// wrong sign in method
+		return map[string]interface{}{
+			"signin_provider": cus.SignInProvider,
+		}, &models.RequestError{
+			Err: errors.New("wrong sign-in method"),
+			StatusCode: http.StatusForbidden,
+		}
+	}
+
+	var cId *int
+	if err == sql.ErrNoRows {
+		cusUuid := uuid.New()
+		stripeId , err := my_stripe.CreateCustomerNoPayment(&models.Customer{
+			FirstName: "",
+			LastName: "",
+			Email: email,
+		})
+		
+		if err != nil {
+			return nil, &models.RequestError{
+				Err: err,
+				StatusCode: http.StatusBadGateway,
+			}
+		}
+		
+
+		cId, err = c.CreateCustomerFromExtSignin(email, cusUuid.String(), *stripeId, signInProvider)
+		if err != nil {
+			return nil, &models.RequestError{
+				Err: err,
+				StatusCode: http.StatusBadGateway,
+			}
+		}
+		// return auth tokens
+	} else {
+		cId = &cus.ID
+	}
+
+
+	accessToken, refreshToken, err := secure.GenerateTokensFromId(*cId, constants.UserTypes.Customer)
+	if err != nil {
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
 
 	return map[string]interface{}{
 		"access_token": accessToken,

@@ -34,7 +34,7 @@ func (c *CustomerDB) GetCustomerByID (
 
 	err := c.DB.QueryRow(`SELECT 
 	c.customer_id, c.first_name, c.last_name, c.email, c.stripe_id, c.default_card_id, 
-	c.address_line1, c.address_line2, c.postal_code, c.city, c.country, c.uuid
+	c.address_line1, c.address_line2, c.postal_code, c.city, c.country, c.uuid, c.signin_provider
 	FROM customer as c 
 	WHERE customer_id=$1
 	GROUP BY c.customer_id`, 
@@ -51,6 +51,7 @@ func (c *CustomerDB) GetCustomerByID (
 		&cus.Address.City,
 		&cus.Address.Country,
 		&cus.Uuid,
+		&cus.SignInProvider,
 	)
 	if err != nil {
 		return nil, err
@@ -64,7 +65,7 @@ func (c *CustomerDB) GetCustomerByEmail (
 ) (*models.Customer, error) {
 	var cus models.Customer 
 	err := c.DB.QueryRow(`SELECT 
-		customer_id, first_name, last_name, email, uuid
+		customer_id, first_name, last_name, email, uuid, email_verified, signin_provider
 		FROM customer WHERE email=$1`, 
 	email).Scan(
 		&cus.ID,
@@ -72,6 +73,8 @@ func (c *CustomerDB) GetCustomerByEmail (
 		&cus.LastName,
 		&cus.Email,
 		&cus.Uuid,
+		&cus.EmailVerified,
+		&cus.SignInProvider,
 	)
 
 	if err != nil {

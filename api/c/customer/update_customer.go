@@ -7,6 +7,7 @@ import (
 
 	"github.com/johnyeocx/usual/server/api/auth"
 	"github.com/johnyeocx/usual/server/constants"
+	my_enums "github.com/johnyeocx/usual/server/constants/enums"
 	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/media"
@@ -83,6 +84,13 @@ func sendUpdateEmailOTP(
 
 	// step 1: get cus name
 	cus, err := c.GetCustomerByID(cusId)
+	if cus.SignInProvider != my_enums.Custom {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusUnauthorized,
+		}
+	}
+	
 	if err != nil {
 		return &models.RequestError{
 			Err: err,

@@ -7,7 +7,7 @@ import (
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
-	"github.com/johnyeocx/usual/server/constants"
+	my_enums "github.com/johnyeocx/usual/server/constants/enums"
 	"google.golang.org/api/option"
 )
 
@@ -44,7 +44,7 @@ func SendPaymentFailedNotification(
 
 		Token: fcmToken, 
 		Data: map[string]string{
-			"type": string(constants.PNPaymentFailed),
+			"type": string(my_enums.PNPaymentFailed),
 			"sub_id": fmt.Sprint(subId),
 			
 		},
@@ -85,7 +85,7 @@ func SendPaymentSucceededNotification(
 
 		Token: fcmToken, 
 		Data: map[string]string{
-			"type": string(constants.PNPaymentRequiresAction),
+			"type": string(my_enums.PNPaymentRequiresAction),
 			"sub_id": fmt.Sprint(subId),
 		},
 		APNS: &messaging.APNSConfig{
@@ -122,7 +122,7 @@ func SendPaymentVoidedNotification(
 
 		Token: fcmToken, 
 		Data: map[string]string{
-			"type": string(constants.PNSubCancelled),
+			"type": string(my_enums.PNSubCancelled),
 			"sub_id": fmt.Sprint(subId),
 			
 		},

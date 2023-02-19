@@ -10,7 +10,7 @@ import (
 	firebase "firebase.google.com/go"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
-	"github.com/johnyeocx/usual/server/constants"
+	constants "github.com/johnyeocx/usual/server/constants/enums"
 	"github.com/stripe/stripe-go/v74"
 )
 
