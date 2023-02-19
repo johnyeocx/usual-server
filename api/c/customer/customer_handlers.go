@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
@@ -32,6 +33,9 @@ func Routes(customerRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 	customerRouter.PATCH("verify_email", verifyCusUpdateEmailHandler(sqlDB))
 	customerRouter.PATCH("address", updateCusAddressHandler(sqlDB))
 	customerRouter.PATCH("password", updateCusPasswordHandler(sqlDB))
+	customerRouter.PATCH("default_payment", updateCusDefaultPaymentHandler(sqlDB))
+
+	customerRouter.DELETE("card/:cardId", deleteCusCardHandler(sqlDB))
 }
 
 func saveCusFCMTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
@@ -398,6 +402,63 @@ func updateCusPasswordHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		if reqErr != nil {
 			log.Printf("Failed to update cus password: %v\n", reqErr.Err)
 			c.JSON(reqErr.StatusCode, err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
+}
+
+func updateCusDefaultPaymentHandler(sqlDB *sql.DB) gin.HandlerFunc {
+
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+		}
+
+		reqBody := struct {
+			CardID	int `json:"card_id"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+
+		reqErr := updateCusDefaultPayment(sqlDB, *cusId, reqBody.CardID)
+		if reqErr != nil {
+			log.Printf("Failed to update cus default card: %v\n", reqErr.Err)
+			c.JSON(reqErr.StatusCode, err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
+}
+
+func deleteCusCardHandler(sqlDB *sql.DB) gin.HandlerFunc {
+
+	return func (c *gin.Context) {
+		cusId, err := middleware.AuthenticateCId(c, sqlDB)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, err)
+		}
+
+		cardId, _ := c.Params.Get("cardId")
+		cardIdInt, err := strconv.Atoi(cardId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, errors.New("invalid card id"))
+			return
+		}
+
+		reqErr := deleteCard(sqlDB, *cusId, cardIdInt)
+		if reqErr != nil {
+			log.Printf("Failed to delete cus card: %v\n", reqErr.Err)
+			c.JSON(reqErr.StatusCode, map[string]string{
+				"code": reqErr.Err.Error(),
+			})
 			return
 		}
 

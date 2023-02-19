@@ -35,10 +35,10 @@ func SendPaymentFailedNotification(
 		return err
 	}
 
-	msgBody := fmt.Sprintf("You have a failed payment for your subscription to %s by %s", productName, businessName)
+	msgBody := fmt.Sprintf("You have a pending payment for your subscription to %s by %s", productName, businessName)
 	_, err = fcmClient.Send(context.Background(), &messaging.Message{
 		Notification: &messaging.Notification{
-		  Title: "Payment Failed",
+		  Title: "Payment Pending",
 		  Body: msgBody,
 		},
 

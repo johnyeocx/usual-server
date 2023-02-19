@@ -53,6 +53,105 @@ func updateCusName(
 	return nil
 }
 
+func updateCusDefaultPayment(
+	sqlDB *sql.DB,
+	cusId int,
+	cardId int,
+) (*models.RequestError) {
+
+	// 1. get stripe id from db
+	c := cusdb.CustomerDB{DB: sqlDB}
+	cus, cardStripeId, err := c.CusOwnsCard(cusId, cardId)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// // 2. update stripe profile
+	err = my_stripe.UpdateCusDefaultPayment(cus.StripeID, *cardStripeId)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	// 3. update sql
+	err = c.UpdateCusDefaultCard(cusId, cardId)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	
+	return nil
+}
+
+func deleteCard(
+	sqlDB *sql.DB,
+	cusId int,
+	cardId int,
+) (*models.RequestError) {
+
+	// 1. get stripe id from db
+	c := cusdb.CustomerDB{DB: sqlDB}
+	cus, cardStripeId, err := c.CusOwnsCard(cusId, cardId)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	if int(cus.DefaultCardID.Int16) == cardId {
+		return &models.RequestError{
+			Err: errors.New("card_is_default"),
+			StatusCode: http.StatusForbidden,
+		}
+	}
+
+	_, err = c.CardIsBeingUsed(cardId)
+	if err != nil && err != sql.ErrNoRows{
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	if err == nil {
+		return &models.RequestError{
+			Err: errors.New("card_being_used"),
+			StatusCode: http.StatusForbidden,
+		}
+	}
+
+	// 3. update sql
+	err = c.SetCardDeleted(cardId)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+
+ 	// 2. update stripe profile
+	err = my_stripe.DeletePaymentMethod(*cardStripeId)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+
+	
+	return nil
+}
+
 func sendUpdateEmailOTP(
 	sqlDB *sql.DB,
 	cusId int,
@@ -90,7 +189,7 @@ func sendUpdateEmailOTP(
 			StatusCode: http.StatusUnauthorized,
 		}
 	}
-	
+
 	if err != nil {
 		return &models.RequestError{
 			Err: err,

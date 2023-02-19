@@ -30,6 +30,7 @@ type CardInfo struct {
 	StripeID 	string	`json:"stripe_id"`
 	CusID		int		`json:"customer_id"`
 	Brand		string	`json:"brand"`
+	Deleted		bool 	`json:"deleted"`
 }
 
 

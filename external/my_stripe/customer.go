@@ -123,6 +123,31 @@ func UpdateCusName(cusId string, name string) (error) {
 	return err
 }
 
+func UpdateCusDefaultPayment(cusId string, pmId string) (error) {
+	stripe.Key = stripeSecretKey()
+
+	// 2. CREATE CUSTOMER
+	params := &stripe.CustomerParams{
+		InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{
+			DefaultPaymentMethod: stripe.String(pmId),
+		},
+	}
+
+	_, err := customer.Update(cusId, params)
+	return err
+}
+
+func DeletePaymentMethod(pmId string) (error) {
+	stripe.Key = stripeSecretKey()
+
+	// 2. CREATE CUSTOMER
+	_, err := paymentmethod.Detach(
+		pmId,
+		nil,
+	)
+
+	return err
+}
 
 func UpdateCusEmail(cusId string, email string) (error) {
 	stripe.Key = stripeSecretKey()

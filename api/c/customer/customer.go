@@ -379,6 +379,7 @@ func AddCusCreditCard(
 }
 
 
+
 func CreateCusPass(sqlDB *sql.DB, s3sess *session.Session, cusId int) (*models.RequestError) {
 	// 6. Add pkpass and image to cloud
 

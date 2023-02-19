@@ -147,6 +147,40 @@ func (c *CustomerDB) GetCusPasswordFromID (
 	return &password, nil
 }
 
+func (c *CustomerDB) CusOwnsCard (
+	customerId int,
+	cardId int,
+) (*models.Customer, *string, error) {
+	var cus models.Customer
+	var cardStripeId string
+	err := c.DB.QueryRow(`SELECT c.stripe_id, cc.stripe_id, c.default_card_id  FROM 
+		customer as c JOIN customer_card as cc ON c.customer_id=cc.customer_id
+		WHERE c.customer_id=$1 AND cc.card_id=$2`, 
+		customerId, cardId,
+	).Scan(&cus.StripeID, &cardStripeId, &cus.DefaultCardID)
+
+	if err != nil {
+		return nil, nil, err
+	}
+	return &cus, &cardStripeId, nil
+}
+
+func (c *CustomerDB) CardIsBeingUsed (
+	cardId int,
+) (*string, error) {
+	var cardStripeId string
+	err := c.DB.QueryRow(`SELECT cc.stripe_id FROM 
+		customer_card as cc JOIN subscription as s on s.card_id=cc.card_id
+		WHERE cc.card_id=$1 AND s.cancelled = 'FALSE'`, cardId,
+	).Scan(&cardStripeId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &cardStripeId, nil
+}
+
 
 
 func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription, error) {
@@ -218,7 +252,7 @@ func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription,
 
 func (c *CustomerDB) GetCustomerCards(cusId int) ([]models.CardInfo, error) {
 	query := `SELECT 
-		cc.card_id, cc.last4, cc.brand FROM customer as c JOIN customer_card as cc on c.customer_id=cc.customer_id
+		cc.card_id, cc.last4, cc.brand, cc.deleted FROM customer as c JOIN customer_card as cc on c.customer_id=cc.customer_id
 		WHERE c.customer_id=$1
 	`
 	
@@ -234,6 +268,7 @@ func (c *CustomerDB) GetCustomerCards(cusId int) ([]models.CardInfo, error) {
 			&card.ID,
 			&card.Last4,
 			&card.Brand,
+			&card.Deleted,
 			
 		); err != nil {
 			return nil, err
