@@ -4,6 +4,7 @@ import (
 	"github.com/johnyeocx/usual/server/db/models"
 )
 
+
 func (b *BusinessDB) GetBusinessWithTopSubbedProduct(
 ) ([]models.ExploreResult, error){
 	query := `
@@ -262,7 +263,7 @@ func (s *BusinessDB) GetCSubProduct(
 ) (*models.SubscriptionProduct, error) {
 
 	stmt := `SELECT 
-	p.product_id, p.name, p.description, p.category_id, sp.plan_id, sp.currency, 
+	p.product_id, p.name, p.description, p.category_id, p.business_id, sp.plan_id, sp.currency, 
 	recurring_interval, recurring_interval_count, unit_amount, pc.title
 	
 	from product as p
@@ -280,6 +281,7 @@ func (s *BusinessDB) GetCSubProduct(
 		&product.Name,
 		&product.Description,
 		&product.CategoryID,
+		&product.BusinessID,
 		&plan.PlanID,
 		&plan.Currency,
 		&plan.RecurringDuration.Interval,
@@ -297,48 +299,6 @@ func (s *BusinessDB) GetCSubProduct(
 	}
 	return &subProduct , nil
 }
-
-// func (s *BusinessDB) GetSubProductUsages(
-// 	planId int,
-// ) ([]models.SubUsage, error) {
-
-// 	stmt := `SELECT 
-// 	su.sub_usage_id, su.title, su.unlimited, su.interval, su.amount
-	
-// 	from subscription_usage as su 
-// 	JOIN subscription_plan as sp on su.plan_id=su.plan_id
-// 	WHERE su.plan_id=$1
-// 	GROUP BY su.sub_usage_id
-// 	`
-
-// 	rows, err := s.DB.Query(stmt, planId)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	defer rows.Close()
-
-// 	usages := []models.SubUsage{}
-// 	for rows.Next() {
-// 		usage := models.SubUsage{}
-// 		err := rows.Scan(
-// 			&usage.ID,
-// 			&usage.Title,
-// 			&usage.Unlimited,
-// 			&usage.Interval,
-// 			&usage.Amount,
-// 		)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		usages = append(usages, usage)
-// 	}
-
-// 	return usages , nil
-// }
-
-
 
 func (businessDB *BusinessDB) GetBusinessByIDWithSubCount(businessId int) (*models.Business, error) {
 

@@ -35,7 +35,6 @@ func StripePMStatusToMYPMStatus(status stripe.PaymentIntentStatus) (MyPaymentInt
 }
 
 type CusSignInProvider string
-
 const (
 	Google    	CusSignInProvider = "google.com"
 	Apple		CusSignInProvider = "apple.com"

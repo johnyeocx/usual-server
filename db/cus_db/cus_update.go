@@ -74,7 +74,6 @@ func (c *CustomerDB) UpdateCusPassword(cusId int, passwordHash string) (error){
 }
 
 func (c *CustomerDB) InsertOrUpdateCusFCMToken(cusId int, fcmToken string) (error) {
-	// fmt.Println(fcmToken)
 	_, err := c.DB.Exec(`INSERT into customer_fcm_token 
 	(token, customer_id, last_updated) VALUES($1, $2, $3)
 	ON CONFLICT (customer_id) DO UPDATE SET token=$1, last_updated=$3`, fcmToken, cusId, time.Now())

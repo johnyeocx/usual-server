@@ -18,6 +18,7 @@ func Routes(businessRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Sess
 	businessRouter.GET("/explore", getExploreDataHandler(sqlDB))
 
 	businessRouter.GET("/:id", getBusinessHandler(sqlDB))
+	businessRouter.GET("/data/:id", getBusinessDataHandler(sqlDB))
 	
 	businessRouter.GET("/accounts", accountSearch(sqlDB))
 	businessRouter.GET("/sub_products", searchSubProductsHandler(sqlDB))
@@ -80,7 +81,7 @@ func searchSubProductsHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
-func getBusinessHandler(sqlDB *sql.DB) gin.HandlerFunc {
+func getBusinessDataHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 		businessId := c.Param("id")
 		businessIdInt, err := strconv.Atoi(businessId)
@@ -98,6 +99,26 @@ func getBusinessHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 
 		c.JSON(http.StatusOK, res)
+	}
+}
+
+func getBusinessHandler(sqlDB *sql.DB) gin.HandlerFunc {
+	return func (c *gin.Context) {
+		businessId := c.Param("id")
+		businessIdInt, err := strconv.Atoi(businessId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, err)
+			return
+		}
+
+		business, reqErr := GetBusiness(sqlDB, businessIdInt)
+		if reqErr != nil {
+			log.Println("Failed to get business for customer: ", reqErr.Err)
+			c.JSON(reqErr.StatusCode, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, business)
 	}
 }
 

@@ -18,6 +18,7 @@ type Customer struct {
 	Uuid 				string 			`json:"uuid"`
 	SignInProvider		my_enums.CusSignInProvider		`json:"signin_provider"`
 	EmailVerified		*bool 			`json:"email_verified"`
+	Password 			JsonNullString	`json:"password"`
 }
 
 func (c* Customer) FullName() string{

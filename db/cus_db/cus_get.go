@@ -119,17 +119,17 @@ func (c *CustomerDB) GetCustomerAndCardStripeId (
 
 func (c *CustomerDB) GetCusPasswordFromEmail (
 	email string,
-) (*int, *string, error) {
-	var cusId int
-	var password string
-	err := c.DB.QueryRow("SELECT customer_id, password FROM customer WHERE email=$1", 
+) (*models.Customer, error) {
+
+	var cus models.Customer
+	err := c.DB.QueryRow("SELECT customer_id, password, signin_provider FROM customer WHERE email=$1", 
 		email,
-	).Scan(&cusId, &password)
+	).Scan(&cus.ID, &cus.Password, &cus.SignInProvider)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return &cusId, &password, nil
+	return &cus, nil
 }
 
 func (c *CustomerDB) GetCusPasswordFromID (
@@ -191,7 +191,7 @@ func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription,
 		c.customer_id,
 		s.sub_id, s.start_date, s.cancelled, s.expires, s.cancelled_date, s.card_id,
 		b.name, b.business_id,
-		p.product_id, p.name, p.description, pc.title,
+		p.product_id, p.name, p.description, p.category_id, pc.title,
 		sp.plan_id, sp.recurring_interval, sp.recurring_interval_count, sp.unit_amount, sp.currency,
 		i.invoice_id, i.created, i.status, i.total, i.invoice_url, i.card_id, i.payment_intent_status,
 		ROW_NUMBER() OVER 
@@ -231,7 +231,7 @@ func (c *CustomerDB) GetCustomerSubscriptions(cusId int) ([]models.Subscription,
 			&cusIdFiller,
 			&sub.ID, &sub.StartDate, &sub.Cancelled, &sub.Expires, &sub.CancelledDate, &sub.CardID,
 			&sub.BusinessName, &sub.BusinessID,
-			&product.ProductID, &product.Name, &product.Description, &product.CatTitle,
+			&product.ProductID, &product.Name, &product.Description, &product.CategoryID, &product.CatTitle,
 			&plan.PlanID, &plan.RecurringDuration.Interval, &plan.RecurringDuration.IntervalCount, &plan.UnitAmount, &plan.Currency,
 			&invoice.ID, &invoice.Created, &invoice.Status, &invoice.Total, &invoice.InvoiceURL, &invoice.CardID, &invoice.PaymentIntentStatus,
 			&rank,

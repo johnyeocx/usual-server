@@ -28,19 +28,29 @@ func AuthMiddleware() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		
+		// accessToken, _ := c.Cookie("access_token")
+		// fmt.Println(accessToken)
 
+		var accessToken string
+		accessToken, err := c.Cookie("access_token")
+		
+		if err != nil || len(accessToken) == 0 {
+			const BEARER_SCHEMA = "Bearer "
+			authHeader := c.GetHeader("Authorization")
+		
+			if authHeader == "" || len(authHeader) < len("Bearer  "){
+				log.Printf("No authorization header found\n")
+				c.Next()
+				return
+			}
 
-		const BEARER_SCHEMA = "Bearer "
-		authHeader := c.GetHeader("Authorization")
-
-		if authHeader == "" {
-			log.Printf("No authorization header found\n")
-			c.Next()
-			return
+			accessToken = authHeader[len(BEARER_SCHEMA):]
 		}
 
-		userId, userType, err := secure.ParseAccessToken(authHeader[len(BEARER_SCHEMA):])
+	
+		userId, userType, err := secure.ParseAccessToken(accessToken)
 		
+	
 		if err != nil {
 			log.Printf("Could not parse access token: %s", err.Error())
 			c.Next();
@@ -52,6 +62,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
+
+		
 
 		c.Set(UserCtxKey.key, userId)
 		c.Set(UserTypeCtxKey.key, userType)
@@ -110,6 +122,8 @@ func AuthenticateBId(c *gin.Context, sqlDB *sql.DB) (*int, error) {
 func AuthenticateCId(c *gin.Context, sqlDB *sql.DB) (*int, error) {
 
 	customerId, cusType, err := UserCtx(c)
+
+
 
 	
 	if err != nil {

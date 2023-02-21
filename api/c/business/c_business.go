@@ -2,6 +2,7 @@ package c_business
 
 import (
 	"database/sql"
+	"net/http"
 
 	"github.com/johnyeocx/usual/server/db"
 	"github.com/johnyeocx/usual/server/db/models"
@@ -39,35 +40,20 @@ func SearchSubProducts(sqlDB *sql.DB, query string) ([]models.ExploreResult, err
 	return res, nil
 }
 
-func GetBusinessByID(sqlDB *sql.DB, businessId int) (map[string]interface{}, error) {
-
+func GetBusiness(sqlDB *sql.DB, businessId int) (*models.Business, *models.RequestError) {
 	b := db.BusinessDB{DB: sqlDB}
 
 	// 1. Get business
 	business, err := b.GetBusinessByID(businessId)
 	if err != nil {
-		return nil, err
+		return nil, &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
 	}
 
-	// 2. Get products
-	subProducts, err := b.GetBusinessSubProducts(businessId)
-	if err != nil {
-		return nil, err
-	}
-
-	// 3. Get product categories
-	productCats, err := b.GetBusinessProductCategories(businessId)
-	if err != nil {
-		return nil, err
-	}
-
-	return map[string] interface{} {
-		"business": business,
-		"sub_products": *subProducts,
-		"product_categories": *productCats,
-	}, nil
+	return business, nil
 }
-
 
 func GetBusinessSubProducts(sqlDB *sql.DB, businessId int) (map[string]interface{}, error) {
 

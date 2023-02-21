@@ -54,13 +54,20 @@ func GenerateRefreshToken(userID string, userType string) (string, error) {
 }
 
 func ParseAccessToken(tokenStr string) (string, string, error) {
+	
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		
 		if _, isvalid := token.Method.(*jwt.SigningMethodHMAC); !isvalid {
 			return nil, fmt.Errorf("invalid token: %v", token.Header["alg"])
 		}
 		secretKey := os.Getenv("JWT_ACCESS_SECRET")
 		return []byte(secretKey), nil
 	})
+
+	if err != nil {
+		fmt.Println("Invalid jwt token:", err)
+		return "", "", err
+	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		userId := claims["user_id"].(string)

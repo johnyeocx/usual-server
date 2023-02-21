@@ -48,16 +48,25 @@ func login(
 	// 1. Get hashed password
 	c := cusdb.CustomerDB{DB: sqlDB}
 
-	cusId, hashedPassword, err := c.GetCusPasswordFromEmail(email)
+	cus, err := c.GetCusPasswordFromEmail(email)
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: fmt.Errorf("failed to get hashed password from email\n%v", err),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
+
+	if cus.SignInProvider != my_enums.Custom {
+		return map[string]interface{}{
+			"signin_provider": cus.SignInProvider,
+		}, &models.RequestError{
+			Err: errors.New("signin provider is not manual"),
+			StatusCode: http.StatusForbidden,
+		}
+	}
 	
 	// 2. Check if password matches
-	matches := secure.StringMatchesHash(password, *hashedPassword)
+	matches := secure.StringMatchesHash(password, cus.Password.String)
 	
 	if !matches {
 		return nil, &models.RequestError{
@@ -67,7 +76,7 @@ func login(
 	}
 
 
-	accessToken, refreshToken, err := secure.GenerateTokensFromId(*cusId, "customer")
+	accessToken, refreshToken, err := secure.GenerateTokensFromId(cus.ID, "customer")
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
@@ -75,10 +84,10 @@ func login(
 		}
 	}
 
-
+	
 	return map[string]interface{}{
-		"access_token": accessToken,
-		"refresh_token": refreshToken,
+		"access_token": *accessToken,
+		"refresh_token": *refreshToken,
 	}, nil
 }
 

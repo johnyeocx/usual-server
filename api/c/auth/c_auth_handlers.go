@@ -79,7 +79,9 @@ func getQRPresignedUrlHandler(sqlDB *sql.DB, s3sess *session.Session) gin.Handle
 func validateTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 		_, err := middleware.AuthenticateCId(c, sqlDB)
+
 		if err != nil {
+			log.Println("Failed to validate customer:", err)
 			c.JSON(http.StatusUnauthorized, err)
 			return
 		}
@@ -125,6 +127,7 @@ func loginHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 		
 		// 1. Get user email and search if exists in db
+
 		reqBody := struct {
 			Email  		 string `json:"email"`
 			Password     string `json:"password"`
@@ -139,11 +142,17 @@ func loginHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		res, reqErr := login(sqlDB, reqBody.Email, reqBody.Password)
 
 		if reqErr != nil {
-			log.Println(reqErr.Err)
-			c.JSON(reqErr.StatusCode, reqErr.Err)
+			log.Println("Failed to login:", reqErr.Err)
+			c.JSON(reqErr.StatusCode, res)
 			return 
 		}
 		
+		accessToken := res["access_token"].(string)
+		refreshToken := res["refresh_token"].(string)
+
+		c.SetCookie("access_token", accessToken, 60 * 60 * 24, "/", "localhost", false, true);
+		c.SetCookie("refresh_token", refreshToken, 60 * 60 * 24, "/", "localhost", false, true);
+
 		c.JSON(http.StatusOK, res)
 	}
 }
