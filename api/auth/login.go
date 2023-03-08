@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/johnyeocx/usual/server/db"
+	busdb "github.com/johnyeocx/usual/server/db/bus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
@@ -35,7 +36,7 @@ func login(sqlDB *sql.DB, email string, password string) (
 	}
 
 	// 3. Get business
-	businessDB := db.BusinessDB{DB: sqlDB}
+	businessDB := busdb.BusinessDB{DB: sqlDB}
 	business, err := businessDB.GetBusinessByEmail(email)
 	if err != nil {
 		return nil, &models.RequestError{

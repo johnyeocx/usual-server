@@ -59,13 +59,11 @@ func CreateCustomer(
 	uuid := uuid.NewString()	
 
 	// if no rows
-	if err != nil && err == sql.ErrNoRows {
-		_, err = c.CreateCustomer(firstName, lastName, email, password, uuid, my_enums.Custom)
-		if err != nil {
-			return &models.RequestError{
-				Err: err,
-				StatusCode: http.StatusBadGateway,
-			}
+	_, err = c.CreateCustomer(firstName, lastName, email, password, uuid, my_enums.Custom)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
 		}
 	}
 
@@ -185,7 +183,7 @@ func sendRegEmailOTP(
 	// check email valid
 	if !constants.EmailValid(newEmail) {
 		return &models.RequestError{
-			Err: errors.New("invalid customer email"),
+			Err: errors.New("invalid email"),
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -269,8 +267,6 @@ func GetCustomerData(
 			StatusCode: http.StatusBadGateway,
 		}
 	}
-
-
 
 	// get invoices
 	invoices, err := c.GetCustomerInvoices(cusId)

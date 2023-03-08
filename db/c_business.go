@@ -1,9 +1,14 @@
 package db
 
 import (
+	"database/sql"
+
 	"github.com/johnyeocx/usual/server/db/models"
 )
 
+type BusinessDB struct {
+	DB *sql.DB
+}
 
 func (b *BusinessDB) GetBusinessWithTopSubbedProduct(
 ) ([]models.ExploreResult, error){

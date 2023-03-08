@@ -77,15 +77,17 @@ func (u *UsageDB) GetCusUsagesOnBusiness(
 	startOfMonth := time.Date(now.Year(), now.Month(), 0, 0, 0, 0, 0, time.UTC)
 	startOfYear := time.Date(now.Year(), 0, 0, 0, 0, 0, 0, time.UTC)
 
+
+
 	query := `
 		SELECT 
-		c.uuid, c.first_name, c.last_name
+		c.uuid, c.first_name, c.last_name,
 		s.plan_id, 
 		su.title, su.sub_usage_id, su.unlimited, su.interval, su.amount,
 		p.product_id, p.name, 
 		COUNT(cu.sub_usage_id) as usage_count 
 		from 
-		customer as c 
+		customer as c z
 		JOIN subscription as s on c.customer_id=s.customer_id
 		JOIN subscription_plan as sp ON s.plan_id=sp.plan_id
 		JOIN subscription_usage as su ON su.plan_id=sp.plan_id
@@ -102,6 +104,7 @@ func (u *UsageDB) GetCusUsagesOnBusiness(
 		WHERE c.uuid=$5 AND b.business_id=$6
 		GROUP BY 
 		cu.sub_usage_id, c.customer_id, s.plan_id, p.product_id, su.sub_usage_id
+		ORDER BY su.sub_usage_id
 	`
 
 	rows, err := u.DB.Query(

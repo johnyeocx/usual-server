@@ -52,7 +52,7 @@ func login(
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: fmt.Errorf("failed to get hashed password from email\n%v", err),
-			StatusCode: http.StatusBadRequest,
+			StatusCode: http.StatusNotFound,
 		}
 	}
 
@@ -71,7 +71,7 @@ func login(
 	if !matches {
 		return nil, &models.RequestError{
 			Err: fmt.Errorf("password invalid\n%v", err),
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusNotAcceptable,
 		}
 	}
 
@@ -159,7 +159,7 @@ func ExternalSignIn(
 	}
 
 	return map[string]interface{}{
-		"access_token": accessToken,
-		"refresh_token": refreshToken,
+		"access_token": *accessToken,
+		"refresh_token": *refreshToken,
 	}, nil
 }

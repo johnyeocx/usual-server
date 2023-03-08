@@ -3,15 +3,21 @@ package business
 import (
 	"database/sql"
 
-	"github.com/johnyeocx/usual/server/db"
+	busdb "github.com/johnyeocx/usual/server/db/bus_db"
 )
 
 func getBusinessStats(
 	sqlDB *sql.DB,
 	businessId int,
 ) (map[string]interface{}, error) {
-	b := db.BusinessDB{DB: sqlDB}
+	b := busdb.BusinessDB{DB: sqlDB}
 	subInfos, err := b.GetBusinessSubs(businessId)
+	if err != nil {
+		return nil, err
+	}
+
+	// business accounts
+	bankAccounts, err := b.GetBusinessBankAccounts(businessId)
 	if err != nil {
 		return nil, err
 	}
@@ -30,6 +36,7 @@ func getBusinessStats(
 		"sub_infos": subInfos,
 		"invoices": invoices,
 		"usage_infos": usageInfos,
+		"bank_accounts": bankAccounts,
 	}, nil
 }
 
@@ -41,7 +48,7 @@ func GetTotalAndPayouts (
 	// connect bank account
 
 	// total received
-	b := db.BusinessDB{DB: sqlDB}
+	b := busdb.BusinessDB{DB: sqlDB}
 	total, err :=b.GetBusinessTotalReceived(busId) 
 	if err != nil {
 		return nil, err

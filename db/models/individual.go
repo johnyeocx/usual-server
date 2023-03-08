@@ -9,6 +9,7 @@ type Person struct {
 	Mobile			PhoneNumber `json:"mobile"`
 	DOB				Date 		`json:"dob"`
 	Address			Address		`json:"address"`
+	VerificationDocumentRequired bool `json:"verification_document_required"`
 }
 
 type Date struct {

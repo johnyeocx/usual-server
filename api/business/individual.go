@@ -2,8 +2,10 @@ package business
 
 import (
 	"database/sql"
+	"net/http"
 
-	"github.com/johnyeocx/usual/server/db"
+	busdb "github.com/johnyeocx/usual/server/db/bus_db"
+	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/my_stripe"
 )
 
@@ -13,30 +15,48 @@ func updateIndividualName(
 	businessId int,
 	firstName string,
 	lastName string,
-) (error) {
+) (*models.RequestError) {
 
 	// 1. get stripe id from db
-	b := db.BusinessDB{DB: sqlDB}
+	b := busdb.BusinessDB{DB: sqlDB}
 
 	stripeId, err := b.GetBusinessStripeID(businessId)
 	if err != nil {
-		return err
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
 	}
 
 	indivId, err := b.GetIndividualID(businessId)
 	if err != nil {
-		return err
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
 	}
+
+	// CHECK IF NAME IS TAKEN
+	// b.GetBusinessByEmail()
 
 	// 2. update stripe
 	err = my_stripe.UpdateIndividualName(*stripeId, firstName, lastName)
 	if err != nil {
-		return err
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
 	}
 	
 	// 3. update sql
 	err = b.SetIndividualName(*indivId, firstName, lastName)
-	return err
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+	return nil
 }
 
 func updateIndividualDOB(
@@ -48,7 +68,7 @@ func updateIndividualDOB(
 ) (error) {
 
 	// 1. get stripe id from db
-	b := db.BusinessDB{DB: sqlDB}
+	b := busdb.BusinessDB{DB: sqlDB}
 
 	stripeId, err := b.GetBusinessStripeID(businessId)
 	if err != nil {
@@ -81,7 +101,7 @@ func updateIndividualAddress(
 ) (error) {
 
 	// 1. get stripe id from db
-	b := db.BusinessDB{DB: sqlDB}
+	b := busdb.BusinessDB{DB: sqlDB}
 
 	stripeId, err := b.GetBusinessStripeID(businessId)
 	if err != nil {
@@ -112,7 +132,7 @@ func updateIndividualMobile(
 ) (error) {
 
 	// 1. get stripe id from db
-	b := db.BusinessDB{DB: sqlDB}
+	b := busdb.BusinessDB{DB: sqlDB}
 
 	stripeId, err := b.GetBusinessStripeID(businessId)
 	if err != nil {

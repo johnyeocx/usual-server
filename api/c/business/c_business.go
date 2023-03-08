@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/johnyeocx/usual/server/db"
+	busdb "github.com/johnyeocx/usual/server/db/bus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 )
 
@@ -41,7 +42,7 @@ func SearchSubProducts(sqlDB *sql.DB, query string) ([]models.ExploreResult, err
 }
 
 func GetBusiness(sqlDB *sql.DB, businessId int) (*models.Business, *models.RequestError) {
-	b := db.BusinessDB{DB: sqlDB}
+	b := busdb.BusinessDB{DB: sqlDB}
 
 	// 1. Get business
 	business, err := b.GetBusinessByID(businessId)

@@ -69,7 +69,6 @@ func saveCusFCMTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func getCustomerDataHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 		cusId, err := middleware.AuthenticateCId(c, sqlDB)
-		
 
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, err)
@@ -88,9 +87,7 @@ func getCustomerDataHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
-func getCusSubsAndInvoicesHandler(
-	sqlDB *sql.DB,
-) gin.HandlerFunc {
+func getCusSubsAndInvoicesHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
 		cusId, err := middleware.AuthenticateCId(c, sqlDB)
@@ -165,11 +162,14 @@ func verifyCustomerEmailHandler(sqlDB *sql.DB, s3Sess *session.Session) gin.Hand
 			Email  		 string `json:"email"`
 			OTP          string `json:"otp"`
 		}{}
+
+		
 		if err := c.BindJSON(&reqBody); err != nil {
 			log.Printf("Failed to decode req body for verify otp: %v\n", err)
 			c.JSON(400, err)
 			return
 		}
+		fmt.Println(reqBody)
 		
 		// 2. Verify email
 		res, reqErr := VerifyCustomerRegEmail(s3Sess, sqlDB, reqBody.Email, reqBody.OTP)
@@ -195,10 +195,9 @@ func resendEmailOTPHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			c.JSON(400, err)
 			return
 		}
-
 		
 		var reqErr *models.RequestError
-		if reqBody.OtpType == constants.OtpTypes.RegisterCusEmail {
+		if reqBody.OtpType == constants.OtpTypes.RegisterCusEmail  {
 
 			reqErr = sendRegEmailOTP(sqlDB, reqBody.Email)
 		} else if reqBody.OtpType == constants.OtpTypes.UpdateCusEmail {

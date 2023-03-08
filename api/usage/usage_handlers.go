@@ -33,7 +33,7 @@ func scanCusQRHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			c.JSON(400, err)
 			return
 		}
-		
+
 		res, reqErr := ScanCusQR(sqlDB, reqBody.CusUUID, *businessId)
 		if reqErr != nil {
 			log.Println("Failed to scan cus QR: ", reqErr)

@@ -29,8 +29,6 @@ func Routes(authRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session,
 	authRouter.POST("/validate", validateTokenHandler(sqlDB))
 	authRouter.POST("/refresh_token", refreshTokenHandler(sqlDB))
 	authRouter.POST("/login", loginHandler(sqlDB))
-	// authRouter.POST("/verify_msg_otp", verifyRegisterOTPHandler(conn))
-	// authRouter.POST("/register_user_details", registerUserDetailsHandler(conn))
 }
 
 func getPkPassPresignedUrlHandler(sqlDB *sql.DB, s3sess *session.Session) gin.HandlerFunc {
@@ -78,6 +76,7 @@ func getQRPresignedUrlHandler(sqlDB *sql.DB, s3sess *session.Session) gin.Handle
 
 func validateTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
+
 		_, err := middleware.AuthenticateCId(c, sqlDB)
 
 		if err != nil {
@@ -93,17 +92,22 @@ func validateTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func refreshTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 
-		reqBody := struct {
-			RefreshToken	string `json:"refresh_token"`
-		}{}
-
-		if err := c.BindJSON(&reqBody); err != nil {
-			log.Printf("Failed to decode req body for refresh token: %v\n", err)
-			c.JSON(400, err)
-			return
+		refreshTokenStr, err := c.Cookie("refresh_token")
+		fmt.Println(refreshTokenStr)
+		if err != nil || len(refreshTokenStr) == 0 {
+			reqBody := struct {
+				RefreshToken	string `json:"refresh_token"`
+			}{}
+	
+			if err := c.BindJSON(&reqBody); err != nil {
+				log.Printf("Failed to decode req body for refresh token: %v\n", err)
+				c.JSON(400, err)
+				return
+			}
+			refreshTokenStr = reqBody.RefreshToken
 		}
 
-		cId, err := refreshToken(sqlDB, reqBody.RefreshToken)
+		cId, err := refreshToken(sqlDB, refreshTokenStr)
 		if err != nil {
 			log.Printf("Failed to authenticate refresh token: %v\n", err)
 			c.JSON(http.StatusUnauthorized, err)
@@ -116,6 +120,9 @@ func refreshTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
+		c.SetCookie("access_token", *accessToken, 60 * 60 * 24, "/", "localhost", false, true);
+		c.SetCookie("refresh_token", *refreshToken, 60 * 60 * 24, "/", "localhost", false, true);
+
 		c.JSON(200, map[string]string{
 			"access_token": *accessToken,
 			"refresh_token": *refreshToken,
@@ -126,8 +133,6 @@ func refreshTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 func loginHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 		
-		// 1. Get user email and search if exists in db
-
 		reqBody := struct {
 			Email  		 string `json:"email"`
 			Password     string `json:"password"`
@@ -191,6 +196,11 @@ func googleSignInHandler(sqlDB *sql.DB, fbApp *firebase.App) gin.HandlerFunc {
 			c.JSON(reqErr.StatusCode, res)
 			return
 		}
+		
+		accessToken := res["access_token"].(string)
+		refreshToken := res["refresh_token"].(string)
+		c.SetCookie("access_token", accessToken, 60 * 60 * 24, "/", "localhost", false, true);
+		c.SetCookie("refresh_token", refreshToken, 60 * 60 * 24, "/", "localhost", false, true);
 
 		c.JSON(http.StatusOK, res)
 	}

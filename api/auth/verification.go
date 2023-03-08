@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/johnyeocx/usual/server/db"
+	busdb "github.com/johnyeocx/usual/server/db/bus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/otp"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
 
 var (
-    registerExpiry = time.Minute * 20
+    registerExpiry = time.Minute * 5
 )
 
 func GenerateEmailOTP(
@@ -87,7 +88,7 @@ func VerifyEmailOTP(
     if !secure.StringMatchesHash(otp, emailOtp.HashedOTP) {
         return nil, &models.RequestError{
             Err: fmt.Errorf("invalid otp provided\n%v", err),
-            StatusCode: http.StatusUnauthorized,
+            StatusCode: http.StatusForbidden,
         };
     }
 
@@ -145,7 +146,7 @@ func VerifyCustomerEmailOTP(
     }
 
     // 5. Get business by email
-    businessDB := db.BusinessDB{DB: sqlDB}
+    businessDB := busdb.BusinessDB{DB: sqlDB}
     business, err := businessDB.GetBusinessByEmail(email); 
     if err != nil {
         return nil, &models.RequestError{

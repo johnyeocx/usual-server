@@ -18,41 +18,24 @@ func (a *AuthDB) InsertBusinessDetails(business *models.BusinessDetails) (*int64
 	if err != nil {
 		return nil, err
 	}
-	
-	var businessId int64
-	err = a.DB.QueryRow(
-		`SELECT business_id FROM business WHERE email=$1 AND email_verified=false`, 
-		business.Email,).Scan(&businessId)
-	
-	if err != sql.ErrNoRows {
-		return &businessId, nil
-	} else if err != nil && err != sql.ErrNoRows {
-		return nil, err
-	}
 
 	insertStatement := `
 		INSERT INTO business (name, country, email, password) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (email) DO UPDATE 
+		SET name=$1, country=$2, password=$4
+		RETURNING business_id
 	`
 	
-	_, err = a.DB.Exec(
+	var insertedId int64
+	err = a.DB.QueryRow(
 		insertStatement, 
 		business.Name, 
 		business.Country,
 		business.Email,
 		hashedPassword,
-	)
+	).Scan(&insertedId)
 
 	if err != nil {
-		return nil, err
-	}
-
-	var insertedId int64
-	if err := a.DB.QueryRow(
-		"SELECT business_id FROM business WHERE name=$1 AND email=$2 AND country=$3", 
-		business.Name, 
-		business.Email,
-		business.Country,
-	).Scan(&insertedId); err != nil {
 		return nil, err
 	}
 

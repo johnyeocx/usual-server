@@ -22,7 +22,11 @@ func (c *CustomerDB) CreateCustomer (
 
 	var cusId int
 	err = c.DB.QueryRow(`
-		INSERT into customer (first_name, last_name, email, password, uuid, signin_provider) VALUES ($1, $2, $3, $4, $5, $6) RETURNING customer_id`,
+		INSERT into customer (first_name, last_name, email, password, uuid, signin_provider)  
+		VALUES ($1, $2, $3, $4, $5, $6) 
+		ON CONFLICT (email)  DO UPDATE 
+		SET first_name=$1, last_name=$2, password=$4, uuid=$5, signin_provider=$6
+		RETURNING customer_id`,
 		firstName, lastName, email, hashedPassword, uuid, emailType,
 	).Scan(&cusId)
 

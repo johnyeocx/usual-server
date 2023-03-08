@@ -2,16 +2,20 @@ package auth
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gin-gonic/gin"
+	"github.com/johnyeocx/usual/server/constants"
 	"github.com/johnyeocx/usual/server/db"
+	busdb "github.com/johnyeocx/usual/server/db/bus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/external/cloud"
 	"github.com/johnyeocx/usual/server/external/media"
+	"github.com/johnyeocx/usual/server/external/my_stripe"
 	"github.com/johnyeocx/usual/server/utils/middleware"
 	"github.com/johnyeocx/usual/server/utils/secure"
 )
@@ -21,6 +25,7 @@ func Routes(authRouter *gin.RouterGroup, sqlDB *sql.DB, s3Sess *session.Session)
 	
 	authRouter.POST("/validate", validateTokenHandler(sqlDB))
 	authRouter.POST("/refresh_token", refreshTokenHandler(sqlDB))
+	authRouter.POST("/resend_email_otp", resendEmailOTPHandler(sqlDB))
 
 	authRouter.POST("/create_business", createBusinessHandler(sqlDB, s3Sess))
 	authRouter.POST("/verify_email", verifyEmailHandler(sqlDB))
@@ -87,8 +92,6 @@ func validateTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
-
-
 func refreshTokenHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	return func (c *gin.Context) {
 
@@ -129,6 +132,7 @@ func verifyEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		reqBody := struct {
 			Email  		 string `json:"email"`
 			OTP          string `json:"otp"`
+			IPAddress	string `json:"ip_address"`
 		}{}
 		if err := c.BindJSON(&reqBody); err != nil {
 			log.Printf("Failed to decode req body for verify otp: %v\n", err)
@@ -144,18 +148,30 @@ func verifyEmailHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-
-		// 3. Success, set user email verified
-		authDB := db.AuthDB{DB: sqlDB}
-		if err := authDB.SetBusinessVerified(reqBody.Email, true); err != nil {
+		// 4. Get business by email
+		businessDB := busdb.BusinessDB{DB: sqlDB}
+		business, err := businessDB.GetBusinessByEmail(reqBody.Email); 
+		if err != nil {
 			c.JSON(http.StatusBadGateway, err)
 			return
 		}
 
-		// 4. Get business by email
-		businessDB := db.BusinessDB{DB: sqlDB}
-		business, err := businessDB.GetBusinessByEmail(reqBody.Email); 
+		// 5. Create stripe account
+		bStripeId, err := my_stripe.CreateBasicConnectedAccount(business.Country, business.Email, reqBody.IPAddress)
 		if err != nil {
+			c.JSON(http.StatusBadGateway, errors.New("stripe_creation_failed"))
+			return
+		}
+		
+		err = businessDB.SetBusinessStripeID(business.ID, *bStripeId)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, errors.New("stripe_creation_failed"))
+			return
+		}
+
+		// 3. Success, set user email verified
+		authDB := db.AuthDB{DB: sqlDB}
+		if err := authDB.SetBusinessVerified(reqBody.Email, true); err != nil {
 			c.JSON(http.StatusBadGateway, err)
 			return
 		}
@@ -232,4 +248,41 @@ func generateTokens(businessId int) (*string, *string, error) {
 	}
 
 	return &accessToken, &refreshToken, nil
+}
+
+func resendEmailOTPHandler(sqlDB *sql.DB) gin.HandlerFunc {
+	return func (c* gin.Context) {
+		reqBody := struct {
+			Email 	string	`json:"email"`
+			OtpType  string  `json:"otp_type"`
+		}{}
+
+		if err := c.BindJSON(&reqBody); err != nil {
+			log.Printf("Failed to decode req body: %v\n", err)
+			c.JSON(400, err)
+			return
+		}
+		
+		var reqErr *models.RequestError
+		if reqBody.OtpType == constants.OtpTypes.RegisterBusEmail  {
+			reqErr = sendBusRegEmailOTP(sqlDB, reqBody.Email)
+		} else if reqBody.OtpType == constants.OtpTypes.UpdateCusEmail {
+			// bId, err := middleware.AuthenticateBId(c, sqlDB)
+			// if err != nil {
+			// 	c.JSON(http.StatusUnauthorized, err)
+			// 	return
+			// }
+			// reqErr = sendUpdateEmailOTP(sqlDB, *cusId, reqBody.Email)
+		} else {
+			c.JSON(http.StatusBadRequest, errors.New("invalid otp type"))
+		}
+
+		if reqErr != nil {
+			log.Printf("Failed to resend bus email verification: %v\n", reqErr.Err)
+			c.JSON(http.StatusBadGateway, reqErr.Err)
+			return
+		}
+
+		c.JSON(200, nil)
+	}
 }

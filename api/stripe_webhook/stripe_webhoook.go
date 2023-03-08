@@ -4,15 +4,19 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"net/http"
+	"strings"
 	"time"
 
 	firebase "firebase.google.com/go"
 	"github.com/johnyeocx/usual/server/api/c/subscription"
 	my_enums "github.com/johnyeocx/usual/server/constants/enums"
 	"github.com/johnyeocx/usual/server/db"
+	busdb "github.com/johnyeocx/usual/server/db/bus_db"
 	cusdb "github.com/johnyeocx/usual/server/db/cus_db"
 	"github.com/johnyeocx/usual/server/db/models"
 	"github.com/johnyeocx/usual/server/utils/fcm"
+	"github.com/stripe/stripe-go/v74"
 )
 
 func VoidedInvoice(sqlDB *sql.DB, fbApp *firebase.App, data map[string]interface{}) (error) {
@@ -155,4 +159,37 @@ func ParseInvoicePaid(data map[string]interface{})(*models.Invoice) {
 	}
 
 	return &invoice
+}
+
+func SetIndVerificationDocRequired(sqlDB *sql.DB, account stripe.Account, required bool) (*models.RequestError) {
+	busStripeID := account.ID
+	b := busdb.BusinessDB{DB: sqlDB}
+	i, err := b.GetIndividualFromStripeID(busStripeID)
+
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	err = b.UpdateIndividualVerificationDocumentRequired(i.ID, true)
+	if err != nil {
+		return &models.RequestError{
+			Err: err,
+			StatusCode: http.StatusBadGateway,
+		}
+	}
+
+	return nil
+}
+
+func VerificationDocRequired(requirements []string) (bool){
+	for _, r := range requirements {
+		if strings.Contains(r, "verification.document") {
+			return true
+		}
+	}
+
+	return false
 }

@@ -25,6 +25,12 @@ func createSubProduct (
 	
 	db := db.BusinessDB{DB: sqlDB}
 
+
+	stripeProductId, stripePriceId, err := my_stripe.CreateNewSubProduct(product.Name, *subPlan)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// 1. Insert new category id
 	var newCatId *int;
 	var catId = category.CategoryID
@@ -39,12 +45,6 @@ func createSubProduct (
 		newCatId = id;
 		catId = id;
 	}
-
-	stripeProductId, stripePriceId, err := my_stripe.CreateNewSubProduct(product.Name, *subPlan)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	
 	// 1. insert subscription
 	insertedProduct, err := db.InsertProduct(businessId, catId, product, *stripeProductId)
@@ -109,7 +109,7 @@ func GetSubProductStats(
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 		}
 	}
 
@@ -232,7 +232,7 @@ func UpdateProductUsage(
 	if err != nil {
 		return &models.RequestError{
 			Err: err,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 		}
 	}
 
@@ -291,7 +291,7 @@ func DeleteSubProduct(
 	if err != nil {
 		return &models.RequestError{
 			Err: err,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 		}
 	}
 

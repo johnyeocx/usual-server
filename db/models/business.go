@@ -11,4 +11,23 @@ type Business struct {
 	StripeID 		*string `json:"stripe_account_id"`
 	Description 	*string `json:"description"`
 	SubCount 		*int	`json:"sub_count"`
+	EmailVerified 	*bool 	`json:"email_verified"`
+	ExternalAccountID JsonNullInt16 	`json:"external_account_id"`
+	ExternalAccountType JsonNullString 	`json:"external_account_type"`
+}
+
+type BankAccount struct {
+	ID					int 	`json:"bank_account_id"`
+	StripeID 			string 	`json:"stripe_id"`
+	AccountHolderName 	string 	`json:"account_holder_name"`
+	// AccountHolderType 	string 	`json:"account_holder_type"`
+	BankName			string 	`json:"bank_name"`
+	Last4				string 	`json:"last4"`
+	RoutingNumber 		string 	`json:"routing_number"`
+}
+
+type BankInfo struct {
+	AccountHolder 	string 	`json:"account_holder"`
+	AccountNumber 	string 	`json:"account_number"`
+	RoutingNumber		string 	`json:"routing_number"`
 }

@@ -13,11 +13,15 @@ var UserTypes = userTypes{
 }
 
 type otpTypes struct {
+	RegisterBusEmail string
+	UpdateBusEmail string
 	RegisterCusEmail string
 	UpdateCusEmail string
 }
 
 var OtpTypes = otpTypes {
+	RegisterBusEmail: "register",
+	UpdateBusEmail: "bus_update_email",
 	RegisterCusEmail: "customer_register",
 	UpdateCusEmail: "customer_update_email",
 }

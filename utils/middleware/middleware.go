@@ -29,17 +29,14 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		
 		// accessToken, _ := c.Cookie("access_token")
-		// fmt.Println(accessToken)
-
+		
 		var accessToken string
 		accessToken, err := c.Cookie("access_token")
-		
 		if err != nil || len(accessToken) == 0 {
 			const BEARER_SCHEMA = "Bearer "
 			authHeader := c.GetHeader("Authorization")
 		
 			if authHeader == "" || len(authHeader) < len("Bearer  "){
-				log.Printf("No authorization header found\n")
 				c.Next()
 				return
 			}

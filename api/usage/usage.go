@@ -27,13 +27,10 @@ func InsertCusUsage(
 
 	// check that business owns sub usage id
 	subUsage, usageCount,  err := u.InsertCusUsageValid(cusUuid, subUsageId, businessId)
-
-
-
 	if err == sql.ErrNoRows {
 		return nil, &models.RequestError{
 			Err: err,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 		}
 	} else if err != nil{
 		return nil, &models.RequestError{

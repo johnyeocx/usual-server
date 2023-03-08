@@ -2,11 +2,13 @@ package business
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/johnyeocx/usual/server/utils/middleware"
+	"github.com/stripe/stripe-go/v74"
 )
 
 // UPDATE
@@ -29,9 +31,9 @@ func updateIndividualNameHandler(sqlDB *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		err = updateIndividualName(sqlDB, *businessId, reqBody.FirstName, reqBody.LastName)
-		if err != nil {
-			log.Printf("Failed to update individual name: %v\n", err)
+		reqErr := updateIndividualName(sqlDB, *businessId, reqBody.FirstName, reqBody.LastName)
+		if reqErr != nil {
+			log.Printf("Failed to update individual name: %v\n", reqErr.Err)
 			c.JSON(http.StatusBadGateway, err)
 			return
 		}
@@ -62,6 +64,16 @@ func updateIndividualDOBHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 		err = updateIndividualDOB(sqlDB, *businessId, reqBody.Day, reqBody.Month, reqBody.Year)
 		if err != nil {
+			var stripeErr  stripe.Error
+			err := json.Unmarshal([]byte(err.Error()), &stripeErr)
+			if err == nil {
+				c.JSON(http.StatusNotAcceptable, map[string]string {
+					"param": stripeErr.Param,
+					"message": stripeErr.Msg,
+				})
+				return;
+			}
+			
 			log.Printf("Failed to update individual name: %v\n", err)
 			c.JSON(http.StatusBadGateway, err)
 			return
@@ -111,7 +123,6 @@ func updateIndividualAddressHandler(sqlDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
-
 func updateIndividualMobileHandler(sqlDB *sql.DB) gin.HandlerFunc {
 
 	return func (c *gin.Context) {
@@ -139,6 +150,16 @@ func updateIndividualMobileHandler(sqlDB *sql.DB) gin.HandlerFunc {
 		)
 
 		if err != nil {
+			var stripeErr  stripe.Error
+			err := json.Unmarshal([]byte(err.Error()), &stripeErr)
+			if err == nil {
+				c.JSON(http.StatusNotAcceptable, map[string]string {
+					"param": stripeErr.Param,
+					"message": stripeErr.Msg,
+				})
+				return;
+			}
+			
 			log.Printf("Failed to update individual mobile: %v\n", err)
 			c.JSON(http.StatusBadGateway, err)
 			return

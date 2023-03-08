@@ -167,7 +167,7 @@ func ResolvePaymentIntent(
 	if err != nil {
 		return nil, &models.RequestError{
 			Err: err,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusForbidden,
 		}
 	}
 
@@ -270,7 +270,7 @@ func ResumeSubscription(
 		if err != nil {
 			return nil, &models.RequestError{
 				Err: err,
-				StatusCode: http.StatusUnauthorized,
+				StatusCode: http.StatusForbidden,
 			}
 		}
 		cardStripeId = card.StripeID

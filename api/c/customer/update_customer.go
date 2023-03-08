@@ -186,7 +186,7 @@ func sendUpdateEmailOTP(
 	if cus.SignInProvider != my_enums.Custom {
 		return &models.RequestError{
 			Err: err,
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: http.StatusNotAcceptable,
 		}
 	}
 

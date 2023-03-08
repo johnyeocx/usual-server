@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type SubscriptionProduct struct {
 	Product 	Product 			`json:"product"`
 	SubPlan		SubscriptionPlan 	`json:"subscription_plan"`	
@@ -38,17 +40,19 @@ type SubUsage struct {
 type InvoiceData struct {
 	CustomerID			int 			`json:"customer_id"`
 	CustomerStripeID	string 			`json:"stripe_cus_id"`
-	CusLastName			string 			`json:"cus_first_name"`
-	CusFirstName		string 			`json:"cus_last_name"`
+	CusFirstName			string 			`json:"cus_first_name"`
+	CusLastName		string 			`json:"cus_last_name"`
 	InvoiceID			string			`json:"invoice_id"`
 	Total				int				`json:"total"`
 	InvoiceURL			string			`json:"invoice_url"`
+	Created 			time.Time 		`json:"created"`
 	Status				string			`json:"status"`
 	Attempted			bool			`json:"attempted"`
 	ApplicationFeeAmt	JsonNullInt64	`json:"app_fee_amt"`
 
 	ProductName 		*string 			`json:"product_name"`
 	ProductID 			*int 			`json:"product_id"`
+	PaymentIntentStatus	string 			`json:"payment_intent_status"`
 	// SubPlan 			*string 			`json:"product_id"`
 }
 

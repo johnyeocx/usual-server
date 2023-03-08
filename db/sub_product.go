@@ -583,6 +583,18 @@ func (s *BusinessDB) GetStripeProductId(
 	return &stripeProductId, err
 }
 
+func (s *BusinessDB) SetBusStripeID(
+	businessId int,
+	stripeId string,
+) ( error) {
+	
+	// UPDATE PRODUCT CATEGORY
+	_, err := s.DB.Exec(`UPDATE business SET stripe_id=$1 WHERE business_id=$2`, 
+		stripeId, businessId,
+	)
+	return err
+}
+
 func (s *BusinessDB) SetProductName(
 	businessId int,
 	productId int,

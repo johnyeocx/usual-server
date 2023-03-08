@@ -25,6 +25,7 @@ func main() {
 	}
 
 
+	
 	// 2. Connect to services
 	psqlDB := db.Connect()
 	sess := cloud.ConnectAWS()
@@ -40,6 +41,7 @@ func main() {
 
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001"},
+		// AllowOrigins:     []string{"http://172.28.38.241:3000", "http://172.28.38.241:3001"},
 		AllowMethods:     []string{"PUT", "PATCH", "GET", "DELETE", "POST",},
 		AllowHeaders:     []string{"Content-Type", "Authorization", "*"},
 		ExposeHeaders:    []string{"Content-Length", "Content-Type"},
